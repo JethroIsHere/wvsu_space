@@ -5,6 +5,7 @@ import '../log_in.dart';
 import '../sign_up.dart';
 import '../home.dart';
 import '../chat_lobby.dart';
+import '../matching_progress.dart';
 
 // Optional stub for chat session
 import '../chat_session.dart';
@@ -16,6 +17,7 @@ class AppRouter {
   static const String signUp = '/signup';
   static const String home = '/home';
   static const String lobby = '/lobby';
+  static const String matching = '/matching';
   static const String chatSession = '/chat';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -47,6 +49,17 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) =>
               ChatLobbyScreen(initialMode: initialMode, lockMode: lock),
+          settings: settings,
+        );
+      case matching:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final mode = (args?['mode'] as String?) ?? 'random';
+        final keywords =
+            (args?['keywords'] as List?)?.whereType<String>().toList() ??
+            const <String>[];
+        return MaterialPageRoute(
+          builder: (_) =>
+              MatchingProgressScreen(mode: mode, keywords: keywords),
           settings: settings,
         );
       case chatSession:

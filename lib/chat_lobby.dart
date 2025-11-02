@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'router/app_router.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:async';
 
 class ChatLobbyScreen extends StatefulWidget {
   final String? initialMode; // 'random' or 'keyword'
@@ -35,9 +33,7 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
   ];
 
   final Set<String> _selected = <String>{};
-  bool _isMatching = false;
-  DocumentReference<Map<String, dynamic>>? _myQueueRef;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _queueSub;
+  // Local UI state only; matching flow handled by MatchingProgressScreen.
 
   @override
   void initState() {
@@ -51,7 +47,6 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
 
   @override
   void dispose() {
-    _cancelMatching(cleanup: true);
     _keywordController.dispose();
     super.dispose();
   }
@@ -158,9 +153,7 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed:
-                          (_mode == 'keyword' && _selected.isEmpty) ||
-                              _isMatching
+                      onPressed: (_mode == 'keyword' && _selected.isEmpty)
                           ? null
                           : _startMatching,
                       style: ElevatedButton.styleFrom(
@@ -176,7 +169,7 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
                       child: Text(
                         _mode == 'keyword'
                             ? 'Find Match (${_selected.length} selected)'
-                            : (_isMatching ? 'Searching…' : 'Start Chat'),
+                            : 'Start Chat',
                       ),
                     ),
                   ),
@@ -219,7 +212,7 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.12),
+              color: colorScheme.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -301,153 +294,15 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
       return;
     }
 
-    setState(() => _isMatching = true);
-
-    final db = FirebaseFirestore.instance;
-    final queue = db.collection('matchQueue');
-    final now = FieldValue.serverTimestamp();
-
-    // Create or overwrite my waiting doc
-    final myRef = queue.doc(uid);
-    _myQueueRef = myRef;
-    final keywords = _mode == 'keyword' ? _selected.toList() : <String>[];
-    await myRef.set({
-      'uid': uid,
-      'mode': _mode,
-      'keywords': keywords,
-      'status': 'waiting',
-      'createdAt': now,
-    }, SetOptions(merge: true));
-
-    // Try to find a partner quickly (best-effort client-side filter)
-    Query<Map<String, dynamic>> q = queue
-        .where('status', isEqualTo: 'waiting')
-        .where('mode', isEqualTo: _mode);
-    if (_mode == 'keyword' && keywords.isNotEmpty) {
-      q = q.where('keywords', arrayContainsAny: keywords.take(10).toList());
-    }
-    final snap = await q.limit(10).get();
-    QueryDocumentSnapshot<Map<String, dynamic>>? partnerDoc;
-    for (final d in snap.docs) {
-      if ((d.data()['uid'] as String) != uid) {
-        partnerDoc = d;
-        break;
-      }
-    }
-
-    if (partnerDoc != null) {
-      await _pairWith(uid, partnerDoc.reference);
-      return;
-    }
-
-    // Otherwise, listen for my doc to be paired
-    _queueSub?.cancel();
-    _queueSub = myRef.snapshots().listen((doc) {
-      final data = doc.data();
-      if (data == null) return;
-      if (data['status'] == 'paired' && data['sessionId'] != null) {
-        _navigateToSession(data['sessionId'] as String);
-      }
-    });
-
-    // Show cancellable dialog
+    // Navigate to the dedicated matching progress screen which owns
+    // the matchmaking lifecycle and visuals.
     if (!mounted) return;
-    _showSearchingDialog();
-  }
-
-  Future<void> _pairWith(
-    String uid,
-    DocumentReference<Map<String, dynamic>> partnerRef,
-  ) async {
-    final db = FirebaseFirestore.instance;
-    final sessionRef = db.collection('sessions').doc();
-    final batch = db.batch();
-    batch.set(sessionRef, {
-      'participants': [uid, (await partnerRef.get()).data()!['uid']],
-      'mode': _mode,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    if (_myQueueRef != null) {
-      batch.update(_myQueueRef!, {
-        'status': 'paired',
-        'sessionId': sessionRef.id,
-        'partner': (await partnerRef.get()).data()!['uid'],
-      });
-    }
-    batch.update(partnerRef, {
-      'status': 'paired',
-      'sessionId': sessionRef.id,
-      'partner': uid,
-    });
-    await batch.commit();
-    _navigateToSession(sessionRef.id);
-  }
-
-  void _navigateToSession(String sessionId) {
-    _queueSub?.cancel();
-    _queueSub = null;
-    _isMatching = false;
-    if (!mounted) return;
-    Navigator.popUntil(
+    Navigator.pushNamed(
       context,
-      (route) => route.isFirst || route.settings.name == AppRouter.lobby,
-    );
-    Navigator.pushReplacementNamed(
-      context,
-      AppRouter.chatSession,
+      AppRouter.matching,
       arguments: {
         'mode': _mode,
-        'sessionId': sessionId,
-        'keywords': _selected.toList(),
-      },
-    );
-  }
-
-  Future<void> _cancelMatching({bool cleanup = false}) async {
-    if (!_isMatching && !cleanup) return;
-    _queueSub?.cancel();
-    _queueSub = null;
-    final ref = _myQueueRef;
-    _myQueueRef = null;
-    if (ref != null) {
-      try {
-        await ref.delete();
-      } catch (_) {}
-    }
-    // Avoid setState during dispose/cleanup; only update UI when not cleaning up.
-    if (!cleanup && mounted) {
-      setState(() => _isMatching = false);
-    } else {
-      _isMatching = false;
-    }
-  }
-
-  void _showSearchingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return WillPopScope(
-          onWillPop: () async => false,
-          child: AlertDialog(
-            content: Row(
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(width: 16),
-                Expanded(child: const Text('Searching for a partner...')),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  await _cancelMatching();
-                  if (mounted) Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        );
+        'keywords': _mode == 'keyword' ? _selected.toList() : <String>[],
       },
     );
   }
