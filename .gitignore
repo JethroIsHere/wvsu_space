@@ -53,3 +53,45 @@ WVSU Space_1.pdf
 
 # Local docs folder (ignore entire directory)
 /docs/
+
+# Secrets and credentials (prevent accidental leaks)
+# Environment files
+.env
+.env.*
+*.env
+.envrc
+*.secret
+*.secrets
+secrets/
+# Allow a tracked template for environment variables
+!/.env.example
+
+# Firebase/Google config (often contain API keys)
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+**/serviceAccount*.json
+**/service_account*.json
+**/*credentials*.json
+**/*-credentials.json
+
+# Android signing
+android/key.properties
+**/*.keystore
+**/*.jks
+
+# iOS signing and Apple keys/certs
+**/*.p8
+**/*.pem
+**/*.cer
+**/*.mobileprovision
+**/*.p12
+**/*.pfx
+
+# Tooling configs that may contain tokens
+.npmrc
+.yarnrc
+.pnpmrc
+
+# Editor workspace (may hold local secrets)
+.vscode/
