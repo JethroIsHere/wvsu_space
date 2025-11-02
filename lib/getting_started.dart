@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'main.dart'; // Importing to get our AppColors extension
 // --- Added Imports ---
-import 'log_in.dart'; // Import the Log In screen
-import 'sign_up.dart'; // Import the Sign Up screen
+import 'router/app_router.dart';
 // --------------------
 
 class GettingStartedScreen extends StatefulWidget {
@@ -61,7 +60,7 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
     return Scaffold(
       backgroundColor: Theme.of(
         context,
-      ).colorScheme.background, // Corrected from .surface
+      ).colorScheme.surface, // Corrected from .surface
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -154,14 +153,7 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
                 ElevatedButton(
                   style: elevatedButtonStyle,
                   onPressed: () {
-                    // --- Updated Navigation ---
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LogInScreen(),
-                      ),
-                    );
-                    // ------------------------
+                    Navigator.pushNamed(context, AppRouter.login);
                   },
                   child: const Text('Log In'),
                 ),
@@ -169,14 +161,7 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
                 OutlinedButton(
                   style: outlinedButtonStyle,
                   onPressed: () {
-                    // --- Updated Navigation ---
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SignUpScreen(),
-                      ),
-                    );
-                    // ------------------------
+                    Navigator.pushNamed(context, AppRouter.signUp);
                   },
                   child: const Text('Sign Up'),
                 ),

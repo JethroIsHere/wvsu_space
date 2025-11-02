@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Project documentation (local-only)
+# Ignore the documentation text and any variant with this prefix
+WVSU_SPACE_DOCUMENTATION*
+# Ignore the local PDF (name includes a space)
+WVSU SPACE_1.pdf
+WVSU Space_1.pdf
+
+# Local docs folder (ignore entire directory)
+/docs/

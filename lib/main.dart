@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'getting_started.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'router/app_router.dart';
 
-// --- STEP 1: Define your custom colors class ---
-// This class holds all your non-standard colors
+// --- Define your custom colors class ---
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   final Color? success;
@@ -17,7 +18,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.cyan,
   });
 
-  // Helper for easy access (e.g., AppColors.of(context).success)
+  // Helper for easy access
   static AppColors of(BuildContext context) {
     return Theme.of(context).extension<AppColors>()!;
   }
@@ -37,7 +38,6 @@ class AppColors extends ThemeExtension<AppColors> {
     );
   }
 
-  // This allows your custom colors to animate when the theme changes
   @override
   AppColors lerp(ThemeExtension<AppColors>? other, double t) {
     if (other is! AppColors) {
@@ -51,12 +51,15 @@ class AppColors extends ThemeExtension<AppColors> {
     );
   }
 }
+// --- End of custom colors class ---
 
-// --- End of Step 1 ---
-
-void main() {
+// --- This is the ONLY main function ---
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
+// ------------------------------------
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -64,22 +67,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter Demo', // You can change this later
       theme: ThemeData(
         brightness: Brightness.light,
         useMaterial3: true,
 
         // --- STANDARD COLORS ---
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Color(0xFF003087), // 'Primary'
+          seedColor: const Color(0xFF003087), // 'Primary'
 
-          primary: Color(0xFF003087), // 'Primary'
-          secondary: Color(0xFFFDB813), // 'Accent'
-          background: Color(0xFFF5F5F7), // 'Background'
-          error: Color(0xFFFF3B30), // 'Error'
+          primary: const Color(0xFF003087), // 'Primary'
+          secondary: const Color(0xFFFDB813), // 'Accent'
+          surface: const Color(0xFFF5F5F7), // 'Surface'
+          error: const Color(0xFFFF3B30), // 'Error'
 
-          onBackground: Color(0xFF111111), // 'Text Dark'
-          onSurface: Color(0xFF111111), // 'Text Dark'
+          onSurface: const Color(0xFF111111), // 'Text Dark'
 
           onPrimary: Colors.white,
           onSecondary: Colors.black,
@@ -87,7 +89,7 @@ class MyApp extends StatelessWidget {
         ),
 
         // --- STANDARD TEXT STYLES ---
-        textTheme: TextTheme(
+        textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontSize: 22.0,
             fontWeight: FontWeight.bold,
@@ -126,16 +128,16 @@ class MyApp extends StatelessWidget {
         ),
 
         // --- OTHER STANDARD THEMES ---
-        dividerTheme: DividerThemeData(
+        dividerTheme: const DividerThemeData(
           color: Color(0xFFC7C7CC), // 'Divider'
           thickness: 1.0,
         ),
-        inputDecorationTheme: InputDecorationTheme(
+        inputDecorationTheme: const InputDecorationTheme(
           labelStyle: TextStyle(fontSize: 14.0, color: Color(0xFF6E6E73)),
           hintStyle: TextStyle(fontSize: 12.0, color: Color(0xFF6E6E73)),
         ),
 
-        // --- STEP 2: Register your custom colors ---
+        // --- Register your custom colors ---
         extensions: const <ThemeExtension<dynamic>>[
           AppColors(
             success: Color(0xFF34C759),
@@ -145,81 +147,14 @@ class MyApp extends StatelessWidget {
           ),
         ],
       ),
-      home: const GettingStartedScreen(),
+      // Centralized router
+      initialRoute: AppRouter.gettingStarted,
+      onGenerateRoute: AppRouter.onGenerateRoute,
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // --- STEP 3: How to USE your custom colors ---
-    final appColors = AppColors.of(context); // Helper to get your colors
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'This text uses the "Text Secondary" color:',
-              // Using a standard theme color (that we customized)
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            Text(
-              '$_counter',
-              // Using a standard theme text style
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            SizedBox(height: 20),
-
-            // --- Example of using your custom color ---
-            Container(
-              color:
-                  appColors.success, // <-- Using your custom "Success" color!
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                'This container uses the "Success" color',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            SizedBox(height: 10),
-
-            // --- Example of using another custom color ---
-            Text(
-              'This text uses the "Inactive" color',
-              style: TextStyle(
-                color: appColors.inactive,
-              ), // <-- Using "Inactive"!
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
+// --- MyHomePage removed as it's no longer the home screen ---
+// class MyHomePage extends StatefulWidget { ... }
+// class _MyHomePageState extends State<MyHomePage> { ... }
+// -----------------------------------------------------------
