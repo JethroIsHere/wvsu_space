@@ -58,20 +58,22 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
       canPop: true,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        final navigator = Navigator.of(context);
         final ok = await _confirmEnd(context);
         if (ok) {
           await _endChat();
-          if (mounted) Navigator.of(context).pop();
+          navigator.pop();
         }
       },
       child: Scaffold(
         appBar: AppBar(
           leading: BackButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
               final ok = await _confirmEnd(context);
               if (ok) {
                 await _endChat();
-                if (mounted) Navigator.of(context).pop();
+                navigator.pop();
               }
             },
           ),
@@ -85,10 +87,11 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
             PopupMenuButton<String>(
               onSelected: (value) async {
                 if (value == 'end') {
+                  final navigator = Navigator.of(context);
                   final ok = await _confirmEnd(context);
                   if (ok) {
                     await _endChat();
-                    if (mounted) Navigator.of(context).pop();
+                    navigator.pop();
                   }
                 }
               },
@@ -163,6 +166,7 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
               endedBy != myUid) {
             _endAlertShown = true;
             if (!mounted) return;
+            final navigator = Navigator.of(context);
             await showDialog<void>(
               context: context,
               builder: (context) => AlertDialog(
@@ -176,7 +180,8 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
                 ],
               ),
             );
-            if (mounted) Navigator.of(context).pop();
+            if (!mounted) return;
+            navigator.pop();
           }
         });
   }
@@ -267,6 +272,8 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
   Future<void> _openReportDialog() async {
     final sessionId = _sessionId;
     if (sessionId == null) return;
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final reasons = <String>[
       'Harassment',
       'Spam',
@@ -356,16 +363,16 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
       await _endChat(reason: 'reported');
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Report submitted. Chat ended.')),
       );
       // Pop back to previous screen
-      if (mounted) Navigator.of(context).pop();
+      navigator.pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to submit report: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to submit report: $e')),
+      );
     }
   }
 }
