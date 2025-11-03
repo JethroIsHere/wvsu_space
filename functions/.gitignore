@@ -1,0 +1,17 @@
+# Node.js dependencies (do not commit)
+node_modules/
+
+# Firebase Functions runtime config (contains secrets)
+.runtimeconfig.json
+
+# Logs and coverage
+npm-debug.log*
+yarn-error.log*
+coverage/
+.nyc_output/
+
+# Editor/OS cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

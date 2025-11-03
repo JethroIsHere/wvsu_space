@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 
 import 'router/app_router.dart';
@@ -115,32 +116,49 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
       }, SetOptions(merge: true));
       if (mounted) setState(() => _currentStep = 1);
 
-      // Try to find a partner
-      Query<Map<String, dynamic>> q = queue
-          .where('status', isEqualTo: 'waiting')
-          .where('mode', isEqualTo: widget.mode);
-      if (widget.mode == 'keyword' && widget.keywords.isNotEmpty) {
-        q = q.where(
-          'keywords',
-          arrayContainsAny: widget.keywords.take(10).toList(),
+      // Ask Cloud Functions to atomically match (server-side pairing)
+      try {
+        // Call explicit region to avoid mismatch; our function is deployed in us-central1.
+        final callable = FirebaseFunctions.instanceFor(
+          region: 'us-central1',
+        ).httpsCallable('matchUser');
+        final res = await callable.call(<String, dynamic>{
+          'mode': widget.mode,
+          'keywords': widget.keywords.take(10).toList(),
+        });
+        final data = (res.data as Map?)?.map(
+          (k, v) => MapEntry(k.toString(), v),
         );
-      }
-      final snap = await q.limit(10).get();
-      QueryDocumentSnapshot<Map<String, dynamic>>? partnerDoc;
-      for (final d in snap.docs) {
-        if ((d.data()['uid'] as String) != uid) {
-          partnerDoc = d;
-          break;
+        if (data != null &&
+            data['status'] == 'paired' &&
+            data['sessionId'] != null) {
+          if (mounted) setState(() => _currentStep = 2);
+          await Future.delayed(const Duration(milliseconds: 400));
+          _goToSession(data['sessionId'] as String);
+          return;
         }
+      } on FirebaseFunctionsException catch (fe) {
+        debugPrint(
+          'matchUser call failed: ${fe.code} ${fe.message} details=${fe.details}',
+        );
+        // If Functions are unavailable (Spark plan), try client-side pairing
+        // so development can continue without billing.
+        final didPairFallback = await _clientFindAndPair(uid);
+        if (didPairFallback) return;
+        if (mounted) {
+          final msg = fe.message ?? fe.code;
+          final details = fe.details != null ? ' (${fe.details})' : '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Match service error: $msg$details')),
+          );
+        }
+      } catch (e) {
+        debugPrint('matchUser call error: $e');
+        final didPairFallback = await _clientFindAndPair(uid);
+        if (didPairFallback) return;
       }
 
-      if (partnerDoc != null) {
-        if (mounted) setState(() => _currentStep = 2);
-        await _pairWith(uid, partnerDoc.reference);
-        return;
-      }
-
-      // Listen for pairing on my own doc
+      // If not immediately paired, listen for pairing on my own doc
       _queueSub?.cancel();
       _queueSub = _myQueueRef!.snapshots().listen((doc) async {
         final data = doc.data();
@@ -154,45 +172,97 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to start matching: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to start matching. ${e is FirebaseException && e.code == 'failed-precondition' ? 'Index is building, trying a simpler search…' : e.toString()}',
+          ),
+        ),
+      );
       Navigator.maybePop(context);
     }
   }
 
-  Future<void> _pairWith(
-    String uid,
-    DocumentReference<Map<String, dynamic>> partnerRef,
-  ) async {
-    final db = FirebaseFirestore.instance;
-    final sessionRef = db.collection('sessions').doc();
-    final batch = db.batch();
-    final partnerSnap = await partnerRef.get();
-    final partnerUid = partnerSnap.data()!['uid'] as String;
-    batch.set(sessionRef, {
-      'participants': [uid, partnerUid],
-      'mode': widget.mode,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    final myRef = _myQueueRef;
-    if (myRef != null) {
-      batch.update(myRef, {
-        'status': 'paired',
-        'sessionId': sessionRef.id,
-        'partner': partnerUid,
-      });
+  /// Attempt client-side pairing by querying the queue and updating both users
+  /// in a single batch. This is a development fallback for projects without
+  /// Cloud Functions billing. Requires permissive Firestore rules to allow
+  /// peer updates with strict constraints.
+  Future<bool> _clientFindAndPair(String uid) async {
+    try {
+      final db = FirebaseFirestore.instance;
+      final queue = db.collection('matchQueue');
+      Query<Map<String, dynamic>> q = queue
+          .where('status', isEqualTo: 'waiting')
+          .where('mode', isEqualTo: widget.mode);
+      if (widget.mode == 'keyword' && widget.keywords.isNotEmpty) {
+        q = q.where(
+          'keywords',
+          arrayContainsAny: widget.keywords.take(10).toList(),
+        );
+      }
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs;
+      try {
+        final snap = await q.limit(25).get();
+        docs = snap.docs;
+      } on FirebaseException catch (_) {
+        // Fall back to simple query and filter in memory if index is missing
+        final simple = await queue
+            .where('status', isEqualTo: 'waiting')
+            .limit(25)
+            .get();
+        final kw = widget.keywords.toSet();
+        docs = simple.docs.where((d) {
+          final data = d.data();
+          if (data['mode'] != widget.mode) return false;
+          if (widget.mode == 'keyword' && kw.isNotEmpty) {
+            final theirs =
+                (data['keywords'] as List?)?.map((e) => e.toString()).toSet() ??
+                {};
+            if (!kw.any(theirs.contains)) return false;
+          }
+          return true;
+        }).toList();
+      }
+
+      for (final d in docs) {
+        final data = d.data();
+        final partnerUid = data['uid'] as String?;
+        if (partnerUid == null || partnerUid == uid) continue;
+
+        // Create session and update both queue docs
+        final sessionRef = db.collection('sessions').doc();
+        final batch = db.batch();
+        batch.set(sessionRef, {
+          'participants': [uid, partnerUid],
+          'mode': widget.mode,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        final myRef = _myQueueRef ?? queue.doc(uid);
+        batch.update(myRef, {
+          'status': 'paired',
+          'sessionId': sessionRef.id,
+          'partner': partnerUid,
+        });
+        batch.update(d.reference, {
+          'status': 'paired',
+          'sessionId': sessionRef.id,
+          'partner': uid,
+        });
+        await batch.commit();
+        if (!mounted) return true;
+        setState(() => _currentStep = 2);
+        await Future.delayed(const Duration(milliseconds: 400));
+        _goToSession(sessionRef.id);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Client pairing error: $e');
+      return false;
     }
-    batch.update(partnerRef, {
-      'status': 'paired',
-      'sessionId': sessionRef.id,
-      'partner': uid,
-    });
-    await batch.commit();
-    if (!mounted) return;
-    await Future.delayed(const Duration(milliseconds: 450));
-    _goToSession(sessionRef.id);
   }
+
+  // Server-side matching will update our queue doc or return a sessionId.
 
   void _goToSession(String sessionId) {
     _queueSub?.cancel();

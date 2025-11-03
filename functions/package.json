@@ -1,0 +1,10 @@
+{
+  "name": "wvsu-space-functions",
+  "private": true,
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "dependencies": {
+    "firebase-admin": "^12.5.0",
+    "firebase-functions": "^4.8.0"
+  }
+}

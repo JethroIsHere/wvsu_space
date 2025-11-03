@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class ChatSessionScreen extends StatefulWidget {
   const ChatSessionScreen({super.key});
@@ -17,6 +18,8 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
   String? _sessionId;
   String _mode = 'random';
   List<String> _keywords = const [];
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sessionSub;
+  bool _endAlertShown = false;
 
   @override
   void initState() {
@@ -34,11 +37,13 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
           _keywords = kw.whereType<String>().toList();
         }
       });
+      _startSessionListener();
     });
   }
 
   @override
   void dispose() {
+    _sessionSub?.cancel();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -49,50 +54,71 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
     final sessionId = _sessionId;
     final isReady = sessionId != null && sessionId.isNotEmpty;
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: const BackButton(),
-        title: const Text('You matched with a schoolmate!'),
-        actions: [
-          IconButton(
-            tooltip: 'Report',
-            icon: const Icon(Icons.flag_outlined),
-            onPressed: _openReportDialog,
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) async {
-              if (value == 'end') {
-                final navigator = Navigator.of(context);
-                final ok = await _confirmEnd(context);
-                if (ok && mounted) navigator.pop();
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final ok = await _confirmEnd(context);
+        if (ok) {
+          await _endChat();
+          if (mounted) Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(
+            onPressed: () async {
+              final ok = await _confirmEnd(context);
+              if (ok) {
+                await _endChat();
+                if (mounted) Navigator.of(context).pop();
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'end', child: Text('End chat')),
-            ],
           ),
-        ],
-      ),
-      body: isReady
-          ? Column(
-              children: [
-                if (_mode == 'keyword' && _keywords.isNotEmpty)
-                  _MatchBanner(keywords: _keywords),
-                Expanded(
-                  child: _MessagesList(
-                    sessionId: sessionId,
-                    scrollController: _scrollController,
-                  ),
-                ),
-                const Divider(height: 1),
-                _Composer(
-                  controller: _textController,
-                  sending: _sending,
-                  onSend: _sendMessage,
-                ),
+          title: const Text('You matched with a schoolmate!'),
+          actions: [
+            IconButton(
+              tooltip: 'Report',
+              icon: const Icon(Icons.flag_outlined),
+              onPressed: _openReportDialog,
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'end') {
+                  final ok = await _confirmEnd(context);
+                  if (ok) {
+                    await _endChat();
+                    if (mounted) Navigator.of(context).pop();
+                  }
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'end', child: Text('End chat')),
               ],
-            )
-          : _notReadyPlaceholder(),
+            ),
+          ],
+        ),
+        body: isReady
+            ? Column(
+                children: [
+                  if (_mode == 'keyword' && _keywords.isNotEmpty)
+                    _MatchBanner(keywords: _keywords),
+                  Expanded(
+                    child: _MessagesList(
+                      sessionId: sessionId,
+                      scrollController: _scrollController,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _Composer(
+                    controller: _textController,
+                    sending: _sending,
+                    onSend: _sendMessage,
+                  ),
+                ],
+              )
+            : _notReadyPlaceholder(),
+      ),
     );
   }
 
@@ -115,6 +141,60 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
         ),
       ),
     );
+  }
+
+  void _startSessionListener() {
+    final id = _sessionId;
+    if (id == null || id.isEmpty) return;
+    _sessionSub?.cancel();
+    _sessionSub = FirebaseFirestore.instance
+        .collection('sessions')
+        .doc(id)
+        .snapshots()
+        .listen((doc) async {
+          final data = doc.data();
+          if (data == null) return;
+          final status = data['status'] as String?;
+          final endedBy = data['endedBy'] as String?;
+          final myUid = FirebaseAuth.instance.currentUser?.uid;
+          if (!_endAlertShown &&
+              status == 'ended' &&
+              endedBy != null &&
+              endedBy != myUid) {
+            _endAlertShown = true;
+            if (!mounted) return;
+            await showDialog<void>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Chat ended'),
+                content: const Text('Your chat partner left the conversation.'),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+            if (mounted) Navigator.of(context).pop();
+          }
+        });
+  }
+
+  Future<void> _endChat({String? reason}) async {
+    final id = _sessionId;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (id == null || uid == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('sessions').doc(id).set({
+        'status': 'ended',
+        'endedBy': uid,
+        'endedAt': FieldValue.serverTimestamp(),
+        if (reason != null) 'endedReason': reason,
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // ignore failures; we still navigate out
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -238,17 +318,55 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
     if (!ok) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    await FirebaseFirestore.instance.collection('reports').add({
-      'sessionId': sessionId,
-      'reporterId': uid,
-      'reason': selected,
-      'details': controller.text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Thanks—your report was submitted.')),
-    );
+    try {
+      // Try to resolve the other participant for the report document
+      String? reportedUid;
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('sessions')
+            .doc(sessionId)
+            .get();
+        final data = doc.data();
+        if (data != null && data['participants'] is List) {
+          final parts = List.from(
+            data['participants'] as List,
+          ).whereType<String>().toList();
+          if (parts.length == 2) {
+            reportedUid = parts.firstWhere(
+              (p) => p != uid,
+              orElse: () => parts.first,
+            );
+          }
+        }
+      } catch (_) {
+        // best-effort only
+      }
+
+      await FirebaseFirestore.instance.collection('reports').add({
+        'sessionId': sessionId,
+        'reporterId': uid,
+        if (reportedUid != null) 'reportedUserId': reportedUid,
+        'mode': _mode,
+        'reason': selected,
+        'details': controller.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // End the chat as part of reporting
+      await _endChat(reason: 'reported');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report submitted. Chat ended.')),
+      );
+      // Pop back to previous screen
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to submit report: $e')));
+    }
   }
 }
 

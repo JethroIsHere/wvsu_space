@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+	match /databases/{database}/documents {
+		function isSignedIn() { return request.auth != null; }
+
+		// Matchmaking queue: each user owns a doc with id == uid
+				match /matchQueue/{uid} {
+					// Anyone signed in can read to discover potential partners
+					allow read: if isSignedIn();
+
+					// Users manage their own queue doc normally
+					allow create, update, delete: if isSignedIn() && uid == request.auth.uid;
+
+					// Temporary client-side pairing support (for Spark/no billing): allow a
+					// peer to transition another user's doc from waiting -> paired, but only
+					// when partner is the caller and a sessionId is provided. This narrows
+					// the write and mitigates abuse.
+					allow update: if isSignedIn() &&
+						uid != request.auth.uid &&
+						resource.data.status == 'waiting' &&
+						request.resource.data.status == 'paired' &&
+						request.resource.data.sessionId is string &&
+						request.resource.data.partner == request.auth.uid;
+				}
+
+		// Sessions and messages
+				match /sessions/{sessionId} {
+						// Only participants of the session can read the session document.
+						allow read: if isSignedIn() &&
+							request.auth.uid in resource.data.participants;
+
+						// TEMP (dev fallback): allow clients to create a session doc when
+						// performing client-side pairing. Restrict to:
+						// - participants is a list of exactly 2 uids
+						// - the caller is one of the participants
+						// - mode is a string
+						// Updates/deletes remain blocked.
+						allow create: if isSignedIn() &&
+							request.resource.data.participants is list &&
+							request.resource.data.participants.size() == 2 &&
+							request.auth.uid in request.resource.data.participants &&
+							request.resource.data.mode is string;
+						// Allow participants to mark the session as ended.
+						allow update: if isSignedIn() &&
+							request.auth.uid in resource.data.participants &&
+							request.resource.data.status == 'ended' &&
+							request.resource.data.endedBy == request.auth.uid;
+						allow delete: if false;
+
+					match /messages/{messageId} {
+						// Only participants can read and write messages.
+						allow read: if isSignedIn() &&
+							request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants;
+						allow create: if isSignedIn() &&
+							request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants;
+						// Disallow client updates/deletes of messages for integrity.
+						allow update, delete: if false;
+					}
+				}
+
+		// Reports: allow any signed-in user to submit
+		match /reports/{id} {
+			allow create: if isSignedIn();
+			allow read: if false; // keep reports private by default
+		}
+	}
+}
