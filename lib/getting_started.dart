@@ -168,7 +168,8 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () {
-                    // TODO: Handle Admin Access logic
+                    // Open dedicated Admin login screen
+                    Navigator.pushNamed(context, AppRouter.adminLogin);
                   },
                   child: Text(
                     'Admin Access',

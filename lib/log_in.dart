@@ -33,6 +33,7 @@ class _LogInScreenState extends State<LogInScreen> {
 
   // --- Log In Function ---
   Future<void> _logIn() async {
+    final navigator = Navigator.of(context);
     setState(() {
       _isLoading = true;
       _errorMessage = null; // Clear previous errors
@@ -62,10 +63,23 @@ class _LogInScreenState extends State<LogInScreen> {
         debugPrint('SharedPreferences error: $e');
       }
 
-      // 3. Navigate to Home Screen on success
-      if (mounted) {
-        // Check if the widget is still in the tree
-        Navigator.pushReplacementNamed(context, AppRouter.home);
+      // 3. Navigate based on custom claims: admin -> admin reports, else home
+      final user = FirebaseAuth.instance.currentUser;
+      bool isAdmin = false;
+      if (user != null) {
+        try {
+          final token = await user.getIdTokenResult(true);
+          final claims = token.claims ?? {};
+          isAdmin = claims['admin'] == true;
+        } catch (_) {
+          // ignore, default to non-admin
+        }
+      }
+      if (!mounted) return;
+      if (isAdmin) {
+        navigator.pushReplacementNamed(AppRouter.adminReports);
+      } else {
+        navigator.pushReplacementNamed(AppRouter.home);
       }
     } on FirebaseAuthException catch (e) {
       // Handle specific Firebase errors

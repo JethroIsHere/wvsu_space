@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
 	match /databases/{database}/documents {
 		function isSignedIn() { return request.auth != null; }
+		function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
 
 		// Matchmaking queue: each user owns a doc with id == uid
 				match /matchQueue/{uid} {
@@ -58,10 +59,18 @@ service cloud.firestore {
 					}
 				}
 
-		// Reports: allow any signed-in user to submit
+		// Reports: allow any signed-in user to submit; only admins can read/update
 		match /reports/{id} {
 			allow create: if isSignedIn();
-			allow read: if false; // keep reports private by default
+			allow read: if isAdmin();
+			allow update: if isAdmin();
+			allow delete: if isAdmin();
+		}
+
+		// Users: allow admins to read user profiles (for moderation UI)
+		match /users/{uid} {
+			allow read: if isAdmin();
+			allow create, update, delete: if false; // no client writes via rules here
 		}
 	}
 }

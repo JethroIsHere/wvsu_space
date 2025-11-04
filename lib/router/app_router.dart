@@ -6,6 +6,9 @@ import '../sign_up.dart';
 import '../home.dart';
 import '../chat_lobby.dart';
 import '../matching_progress.dart';
+import '../admin/reports_admin.dart';
+import '../admin/admin_login.dart';
+import '../admin/admin_dashboard.dart';
 
 // Optional stub for chat session
 import '../chat_session.dart';
@@ -19,6 +22,9 @@ class AppRouter {
   static const String lobby = '/lobby';
   static const String matching = '/matching';
   static const String chatSession = '/chat';
+  static const String adminReports = '/admin/reports';
+  static const String adminLogin = '/admin/login';
+  static const String adminDashboard = '/admin/dashboard';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -65,6 +71,21 @@ class AppRouter {
       case chatSession:
         return MaterialPageRoute(
           builder: (_) => const ChatSessionScreen(),
+          settings: settings,
+        );
+      case adminLogin:
+        return MaterialPageRoute(
+          builder: (_) => const AdminLoginScreen(),
+          settings: settings,
+        );
+      case adminDashboard:
+        return MaterialPageRoute(
+          builder: (_) => const AdminDashboardScreen(),
+          settings: settings,
+        );
+      case adminReports:
+        return MaterialPageRoute(
+          builder: (_) => const ReportsAdminScreen(),
           settings: settings,
         );
       default:

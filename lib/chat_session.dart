@@ -349,10 +349,34 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
         // best-effort only
       }
 
+      // Optional: pull nicknames to include in report for easier admin display
+      String? reporterNickname;
+      String? reportedNickname;
+      try {
+        final reporterSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        reporterNickname = reporterSnap.data()?['nickname'] as String?;
+      } catch (_) {}
+      if (reportedUid != null) {
+        try {
+          final reportedSnap = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(reportedUid)
+              .get();
+          reportedNickname = reportedSnap.data()?['nickname'] as String?;
+        } catch (_) {}
+      }
+
       await FirebaseFirestore.instance.collection('reports').add({
         'sessionId': sessionId,
         'reporterId': uid,
         if (reportedUid != null) 'reportedUserId': reportedUid,
+        if (reporterNickname != null && reporterNickname.trim().isNotEmpty)
+          'reporterNickname': reporterNickname,
+        if (reportedNickname != null && reportedNickname.trim().isNotEmpty)
+          'reportedNickname': reportedNickname,
         'mode': _mode,
         'reason': selected,
         'details': controller.text.trim(),

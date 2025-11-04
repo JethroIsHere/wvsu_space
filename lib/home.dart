@@ -38,19 +38,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _logout(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseAuth.instance.signOut();
-      if (!context.mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const GettingStartedScreen()),
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const GettingStartedScreen()),
         (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Error logging out: $e')));
     }
   }
 
