@@ -163,3 +163,90 @@ async function tryPair(uid, candidateDoc, mode) {
     return null;
   }
 }
+
+// Callable: delete a user's account and associated top-level documents.
+// This performs a best-effort server-side cleanup and deletes the Auth user.
+// Input: { dryRun: boolean }
+exports.deleteUserAccount = functions
+  .region('us-central1')
+  .https.onCall(async (data, context) => {
+    try {
+      const uid = context.auth && context.auth.uid;
+      if (!uid) {
+        throw new functions.https.HttpsError('unauthenticated', 'Sign in required');
+      }
+
+      const dryRun = data && data.dryRun === true;
+      const results = { deleted: [], errors: [] };
+
+      // Delete the users/{uid} document (recursive delete if available)
+      const userRef = db.collection('users').doc(uid);
+      try {
+        if (typeof admin.firestore().recursiveDelete === 'function') {
+          if (!dryRun) {
+            await admin.firestore().recursiveDelete(userRef);
+            results.deleted.push(`users/${uid}`);
+          } else {
+            const exists = (await userRef.get()).exists;
+            if (exists) results.deleted.push(`users/${uid}`);
+          }
+        } else {
+          // Fallback: delete the doc only
+          const snap = await userRef.get();
+          if (snap.exists) {
+            if (!dryRun) await userRef.delete();
+            results.deleted.push(`users/${uid}`);
+          }
+        }
+      } catch (e) {
+        console.error('failed deleting user doc', e);
+        results.errors.push({ path: `users/${uid}`, error: String(e) });
+      }
+
+      // Delete matching reports where the user is reporter or reported
+      try {
+        const queries = [
+          db.collection('reports').where('reporterUid', '==', uid),
+          db.collection('reports').where('reportedUid', '==', uid),
+        ];
+        for (const q of queries) {
+          const snap = await q.get();
+          const docs = snap.docs;
+          if (docs.length === 0) continue;
+          // Batch deletes in chunks of 500
+          for (let i = 0; i < docs.length; i += 500) {
+            const batch = db.batch();
+            const chunk = docs.slice(i, i + 500);
+            for (const d of chunk) batch.delete(d.ref);
+            if (!dryRun) await batch.commit();
+          }
+          results.deleted.push(`reports (${docs.length})`);
+        }
+      } catch (e) {
+        console.error('failed deleting reports', e);
+        results.errors.push({ path: 'reports', error: String(e) });
+      }
+
+      // Add more collection cleanups here as needed (posts, messages, etc.)
+
+      // Finally delete the auth user
+      try {
+        if (!dryRun) {
+          await admin.auth().deleteUser(uid);
+          results.deleted.push(`auth/${uid}`);
+        } else {
+          results.deleted.push(`auth/${uid}`);
+        }
+      } catch (e) {
+        console.error('failed deleting auth user', e);
+        results.errors.push({ path: `auth/${uid}`, error: String(e) });
+      }
+
+      return { success: true, dryRun: !!dryRun, results };
+    } catch (e) {
+      console.error('deleteUserAccount failed', e);
+      throw new functions.https.HttpsError('internal', 'delete-failed', {
+        message: e && e.message ? String(e.message) : String(e),
+      });
+    }
+  });

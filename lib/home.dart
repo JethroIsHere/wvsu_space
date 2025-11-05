@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'getting_started.dart';
 import 'router/app_router.dart';
 // Reverted: removed Rooms screen import
 
@@ -42,10 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseAuth.instance.signOut();
-      navigator.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const GettingStartedScreen()),
-        (route) => false,
-      );
+      navigator.pushNamedAndRemoveUntil(AppRouter.choose, (route) => false);
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('Error logging out: $e')));
@@ -133,10 +129,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.white,
                               tooltip: 'Settings',
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Settings tapped'),
-                                  ),
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRouter.settings,
                                 );
                               },
                             ),
