@@ -1,4 +1,6 @@
+// ignore_for_file: use_build_context_synchronously
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../router/app_router.dart';
 
@@ -12,114 +14,216 @@ class AdminDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-              decoration: BoxDecoration(color: Colors.amber.shade600),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.shield_outlined,
-                      color: Colors.black87,
-                    ),
+        child: FutureBuilder<bool>(
+          future: _checkIsAdmin(),
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snap.hasData || snap.data != true) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Not authorized.'),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, AppRouter.adminLogin),
+                        child: const Text('Admin Login'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Admin Dashboard',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 26,
+                ),
+              );
+            }
+            // User is admin — render dashboard body
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  decoration: BoxDecoration(color: Colors.amber.shade600),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.shield_outlined,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Admin Dashboard',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 26,
+                                  ),
+                            ),
+                            Text(
+                              _fmtNow(),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              tooltip: 'Settings',
+                              icon: const Icon(
+                                Icons.settings,
+                                color: Colors.black87,
                               ),
-                        ),
-                        Text(
-                          _fmtNow(),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
+                              onPressed: () {},
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              tooltip: 'Show token claims',
+                              icon: const Icon(
+                                Icons.verified_user_outlined,
+                                color: Colors.black87,
+                              ),
+                              onPressed: () => _showTokenClaims(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      tooltip: 'Settings',
-                      icon: const Icon(Icons.settings, color: Colors.black87),
-                      onPressed: () {},
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
 
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8,
-              ),
-              child: Text(
-                'Quick Actions',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8,
+                  ),
+                  child: Text(
+                    'Quick Actions',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
 
-            // Quick actions list
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                children: [
-                  const _ReportsTile(),
-                  const SizedBox(height: 12),
-                  _NavTile(
-                    icon: Icons.manage_accounts_outlined,
-                    color: Colors.blue,
-                    title: 'User Management',
-                    subtitle: 'Search & manage users',
-                    onTap: () => _notImplemented(context),
+                // Quick actions list
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    children: [
+                      const _ReportsTile(),
+                      const SizedBox(height: 12),
+                      _NavTile(
+                        icon: Icons.manage_accounts_outlined,
+                        color: Colors.blue,
+                        title: 'User Management',
+                        subtitle: 'Search & manage users',
+                        onTap: () => _notImplemented(context),
+                      ),
+                      const SizedBox(height: 12),
+                      _NavTile(
+                        icon: Icons.feed_outlined,
+                        color: Colors.orange,
+                        title: 'Logs & Appeals',
+                        subtitle: 'View mod actions & appeals',
+                        onTap: () => _notImplemented(context),
+                      ),
+                      const SizedBox(height: 12),
+                      _MetricTile(
+                        label: 'Community Health',
+                        valueText: '4.2 /5.0',
+                        color: Colors.green,
+                        subtitle: 'Average attitude score',
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _NavTile(
-                    icon: Icons.feed_outlined,
-                    color: Colors.orange,
-                    title: 'Logs & Appeals',
-                    subtitle: 'View mod actions & appeals',
-                    onTap: () => _notImplemented(context),
-                  ),
-                  const SizedBox(height: 12),
-                  _MetricTile(
-                    label: 'Community Health',
-                    valueText: '4.2 /5.0',
-                    color: Colors.green,
-                    subtitle: 'Average attitude score',
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
+  }
+
+  Future<bool> _checkIsAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    try {
+      final t = await user.getIdTokenResult(true);
+      return (t.claims ?? const {})['admin'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _showTokenClaims(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final dialogContext = navigator.context;
+    if (user == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('Not signed in')));
+      return;
+    }
+    try {
+      final t = await user.getIdTokenResult(true);
+      final claims = t.claims ?? {};
+      // Use a context captured synchronously above to avoid using the
+      // original BuildContext across the async gap (satisfies linter).
+      showDialog<void>(
+        context: dialogContext,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Token claims'),
+          content: SingleChildScrollView(
+            child: Text(
+              claims.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to read token claims: $e')),
+      );
+    }
   }
 
   static void _notImplemented(BuildContext context) {
@@ -181,7 +285,7 @@ class _NavTile extends StatelessWidget {
     return Material(
       color: Colors.white,
       elevation: 1.5,
-      shadowColor: Colors.black.withOpacity(0.08),
+      shadowColor: Colors.black.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -192,7 +296,7 @@ class _NavTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -262,7 +366,7 @@ class _MetricTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),

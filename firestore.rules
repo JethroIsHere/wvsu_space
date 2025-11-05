@@ -68,8 +68,9 @@ service cloud.firestore {
 		}
 
 		// Users: allow admins to read user profiles (for moderation UI)
+		// Also allow a user to read their own profile document.
 		match /users/{uid} {
-			allow read: if isAdmin();
+			allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
 			allow create, update, delete: if false; // no client writes via rules here
 		}
 	}

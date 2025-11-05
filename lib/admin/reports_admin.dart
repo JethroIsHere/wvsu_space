@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../router/app_router.dart';
 
 class ReportsAdminScreen extends StatelessWidget {
   const ReportsAdminScreen({super.key});
@@ -34,76 +35,112 @@ class ReportsAdminScreen extends StatelessWidget {
             onPressed: () => _createTestReport(context),
           ),
           IconButton(
-            tooltip: 'Backfill nicknames',
-            icon: const Icon(Icons.person_search_outlined),
-            onPressed: () => _backfillNicknames(context),
-          ),
-          IconButton(
             tooltip: 'Delete all reports',
             icon: const Icon(Icons.delete_forever_outlined),
             onPressed: () => _deleteAllReports(context),
           ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: query.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: FutureBuilder<bool>(
+        future: _checkIsAdmin(),
+        builder: (context, adminSnap) {
+          if (adminSnap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
+          if (!adminSnap.hasData || adminSnap.data != true) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Error loading reports: ${snapshot.error}',
-                  textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Not authorized.'),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, AppRouter.adminLogin),
+                      child: const Text('Admin Login'),
+                    ),
+                  ],
                 ),
               ),
             );
           }
 
-          final docs = snapshot.data?.docs ?? const [];
-          if (docs.isEmpty) {
-            return const Center(child: Text('No reports yet.'));
-          }
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: query.snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Error loading reports: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data();
-              final reason = (data['reason'] as String?) ?? '—';
-              final details = (data['details'] as String?) ?? '';
-              final reported = (data['reportedUserId'] as String?) ?? 'unknown';
-              final reportedNickname = (data['reportedNickname'] as String?)
-                  ?.trim();
-              final ts = data['createdAt'];
-              final when = ts is Timestamp ? ts.toDate() : null;
-              final status = (data['status'] as String?) ?? 'open';
+              final docs = snapshot.data?.docs ?? const [];
+              if (docs.isEmpty) {
+                return const Center(child: Text('No reports yet.'));
+              }
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _ReportCard(
-                  docId: doc.id,
-                  tag: reason,
-                  tagColor: _tagColorFor(reason),
-                  targetId: reported,
-                  targetNickname:
-                      (reportedNickname != null && reportedNickname.isNotEmpty)
-                      ? reportedNickname
-                      : null,
-                  details: details,
-                  timestamp: when,
-                  status: status,
-                ),
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final doc = docs[index];
+                  final data = doc.data();
+                  final reason = (data['reason'] as String?) ?? '—';
+                  final details = (data['details'] as String?) ?? '';
+                  final reported =
+                      (data['reportedUserId'] as String?) ?? 'unknown';
+                  final reportedNickname = (data['reportedNickname'] as String?)
+                      ?.trim();
+                  final ts = data['createdAt'];
+                  final when = ts is Timestamp ? ts.toDate() : null;
+                  final status = (data['status'] as String?) ?? 'open';
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _ReportCard(
+                      docId: doc.id,
+                      tag: reason,
+                      tagColor: _tagColorFor(reason),
+                      targetId: reported,
+                      targetNickname:
+                          (reportedNickname != null &&
+                              reportedNickname.isNotEmpty)
+                          ? reportedNickname
+                          : null,
+                      details: details,
+                      timestamp: when,
+                      status: status,
+                    ),
+                  );
+                },
               );
             },
           );
         },
       ),
     );
+  }
+
+  Future<bool> _checkIsAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    try {
+      final t = await user.getIdTokenResult(true);
+      return (t.claims ?? const {})['admin'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 }
 
@@ -147,7 +184,7 @@ class _ReportCardState extends State<_ReportCard> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -313,10 +350,13 @@ class _ReportCardState extends State<_ReportCard> {
             'action': action,
             'reviewedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('Action "$action" saved')));
       setState(() => _expanded = false);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -333,9 +373,9 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.6)),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
       ),
       child: Text(
         text,
@@ -392,90 +432,7 @@ String _fmtDate(DateTime dt) {
   return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
 }
 
-// Admin-only: backfill missing reporterNickname/reportedNickname on recent reports
-Future<void> _backfillNicknames(BuildContext context) async {
-  final messenger = ScaffoldMessenger.of(context);
-  final db = FirebaseFirestore.instance;
-  messenger.showSnackBar(const SnackBar(content: Text('Backfill started…')));
-
-  try {
-    final snap = await db
-        .collection('reports')
-        .orderBy('createdAt', descending: true)
-        .limit(500)
-        .get();
-
-    final Map<String, String?> cache = {};
-    int updates = 0;
-    WriteBatch? batch;
-    int inBatch = 0;
-
-    Future<String?> nicknameFor(String uid) async {
-      if (cache.containsKey(uid)) return cache[uid];
-      try {
-        final u = await db.collection('users').doc(uid).get();
-        final nick = (u.data()?['nickname'] as String?)?.trim();
-        cache[uid] = (nick != null && nick.isNotEmpty) ? nick : null;
-      } catch (_) {
-        cache[uid] = null;
-      }
-      return cache[uid];
-    }
-
-    Future<void> commitIfNeeded() async {
-      if (batch != null && inBatch > 0) {
-        await batch!.commit();
-        batch = null;
-        inBatch = 0;
-      }
-    }
-
-    for (final doc in snap.docs) {
-      final data = doc.data();
-      final reporterId = data['reporterId'] as String?;
-      final reportedId = data['reportedUserId'] as String?;
-      String? reporterNickname = (data['reporterNickname'] as String?)?.trim();
-      String? reportedNickname = (data['reportedNickname'] as String?)?.trim();
-
-      bool needsUpdate = false;
-      final updateData = <String, dynamic>{};
-
-      if ((reporterNickname == null || reporterNickname.isEmpty) &&
-          reporterId != null) {
-        final n = await nicknameFor(reporterId);
-        if (n != null) {
-          updateData['reporterNickname'] = n;
-          needsUpdate = true;
-        }
-      }
-      if ((reportedNickname == null || reportedNickname.isEmpty) &&
-          reportedId != null) {
-        final n = await nicknameFor(reportedId);
-        if (n != null) {
-          updateData['reportedNickname'] = n;
-          needsUpdate = true;
-        }
-      }
-
-      if (needsUpdate) {
-        batch ??= db.batch();
-        batch!.set(doc.reference, updateData, SetOptions(merge: true));
-        inBatch++;
-        updates++;
-        if (inBatch >= 400) {
-          await commitIfNeeded();
-        }
-      }
-    }
-
-    await commitIfNeeded();
-    messenger.showSnackBar(
-      SnackBar(content: Text('Backfill complete. Updated $updates report(s).')),
-    );
-  } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Backfill failed: $e')));
-  }
-}
+// Backfill function removed from UI; kept as script in /scripts for admin use.
 
 // Admin-only: create a simple test report using current user as both reporter and target
 Future<void> _createTestReport(BuildContext context) async {
@@ -515,28 +472,48 @@ Future<void> _createTestReport(BuildContext context) async {
 
 // Admin-only: delete all reports in batches
 Future<void> _deleteAllReports(BuildContext context) async {
+  final messenger = ScaffoldMessenger.of(context);
+  // Ask user to type DELETE to confirm destructive action
   final confirmed =
       await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete all reports?'),
-          content: const Text('This will permanently remove all reports.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
+        builder: (ctx) {
+          final controller = TextEditingController();
+          return AlertDialog(
+            title: const Text('Delete all reports?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'This will permanently remove all reports. To confirm, type "DELETE" in the field below.',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Type DELETE to confirm',
+                  ),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(
+                  ctx,
+                  controller.text.trim().toUpperCase() == 'DELETE',
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ) ??
       false;
   if (!confirmed) return;
-
-  final messenger = ScaffoldMessenger.of(context);
   final db = FirebaseFirestore.instance;
   int deleted = 0;
   try {
@@ -551,6 +528,8 @@ Future<void> _deleteAllReports(BuildContext context) async {
       deleted += snap.docs.length;
       // Give UI a chance to breathe if very large
       await Future.delayed(const Duration(milliseconds: 50));
+      // allow UI to update; ensure context still mounted for scaffold
+      if (!context.mounted) break;
     }
     messenger.showSnackBar(
       SnackBar(content: Text('Deleted $deleted report(s).')),

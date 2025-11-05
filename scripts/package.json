@@ -1,0 +1,14 @@
+{
+  "name": "wvsu-space-scripts",
+  "version": "1.0.0",
+  "description": "Admin scripts for wvsu_space. Do NOT commit service account JSON to repo.",
+  "main": "backfill_reported_nicknames.js",
+  "scripts": {
+    "backfill:dry": "node backfill_reported_nicknames.js --dry-run",
+    "backfill": "node backfill_reported_nicknames.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.0",
+    "minimist": "^1.2.8"
+  }
+}
