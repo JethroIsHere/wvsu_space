@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'router/app_router.dart';
+import 'utils/app_colors.dart';
 
 class ChooseScreen extends StatelessWidget {
   const ChooseScreen({super.key});
@@ -7,7 +8,7 @@ class ChooseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final elevatedButtonStyle = ElevatedButton.styleFrom(
-      backgroundColor: const Color(0xFF0D47A1), // app blue
+      backgroundColor: BrandColors.appBlue, // app blue
       foregroundColor: Colors.white,
       textStyle: Theme.of(context).textTheme.labelLarge,
       minimumSize: const Size(double.infinity, 52),
@@ -16,8 +17,8 @@ class ChooseScreen extends StatelessWidget {
     final outlinedButtonStyle = OutlinedButton.styleFrom(
       minimumSize: const Size(double.infinity, 52),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      side: const BorderSide(color: Color(0xFF0D47A1)),
-      foregroundColor: const Color(0xFF0D47A1),
+      side: BorderSide(color: BrandColors.appBlue),
+      foregroundColor: BrandColors.appBlue,
     );
 
     return Scaffold(

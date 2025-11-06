@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../getting_started.dart';
 import '../choose.dart';
+import '../change_password.dart';
 import '../log_in.dart';
 import '../sign_up.dart';
 import '../home.dart';
@@ -22,6 +23,7 @@ class AppRouter {
   // Route names
   static const String gettingStarted = '/';
   static const String choose = '/choose';
+  static const String changePassword = '/change-password';
   static const String login = '/login';
   static const String signUp = '/signup';
   static const String home = '/home';
@@ -46,6 +48,11 @@ class AppRouter {
       case choose:
         return MaterialPageRoute(
           builder: (_) => const ChooseScreen(),
+          settings: settings,
+        );
+      case changePassword:
+        return MaterialPageRoute(
+          builder: (_) => const ChangePasswordScreen(),
           settings: settings,
         );
       case login:

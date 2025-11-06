@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'router/app_router.dart';
+import 'utils/app_colors.dart';
 // Reverted: removed Rooms screen import
 
 class HomeScreen extends StatefulWidget {
@@ -139,12 +140,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: const Icon(Icons.account_circle),
                               color: Colors.white,
                               tooltip: 'Profile',
-                              onPressed: () async {
-                                final email =
-                                    FirebaseAuth.instance.currentUser?.email;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(email ?? 'Profile')),
-                                );
+                              onPressed: () {
+                                Navigator.pushNamed(context, AppRouter.profile);
                               },
                               onLongPress: () => _logout(context),
                             ),
@@ -350,14 +347,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF34C759,
-                                ).withValues(alpha: 0.2),
+                                color: BrandColors.appGreen.withOpacity(0.2),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.groups_2,
-                                color: Color(0xFF34C759),
+                                color: BrandColors.appGreen,
                               ),
                             ),
                             const SizedBox(width: 12),

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../router/app_router.dart';
+import '../utils/app_colors.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -96,7 +97,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   width: 84,
                   height: 84,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF0D47A1),
+                    color: BrandColors.appBlue,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -182,7 +183,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               ElevatedButton(
                 onPressed: _loading ? null : _signIn,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D47A1),
+                  backgroundColor: BrandColors.appBlue,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(
