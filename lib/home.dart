@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'router/app_router.dart';
+// bottom nav is provided by MainShell
 import 'utils/app_colors.dart';
 // Reverted: removed Rooms screen import
 
@@ -174,10 +175,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(
-                          Icons.chat_bubble_outline,
-                          color: Colors.white,
-                          size: 28,
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20.0),
+                          child: Container(
+                            width: 72,
+                            height: 72,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white24,
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.chat_bubble_outline,
+                              color: Colors.white,
+                              size: 36,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -305,9 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFFFD60A,
-                                ).withValues(alpha: 0.2),
+                                color: const Color(0xFFFFD60A).withAlpha(51),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -347,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: BrandColors.appGreen.withOpacity(0.2),
+                                color: BrandColors.appGreen.withAlpha(51),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -385,7 +396,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _BottomNav(currentIndex: 0),
+      // Bottom nav is provided by the MainShell when used as a tabbed app.
+      bottomNavigationBar: null,
     );
   }
 }
@@ -409,95 +421,4 @@ class _OutlinedCard extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
-  final int currentIndex;
-  const _BottomNav({required this.currentIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(top: BorderSide(color: Colors.black12)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _NavItem(
-                icon: Icons.chat_bubble,
-                label: 'Chat',
-                selected: currentIndex == 0,
-                selectedColor: colorScheme.primary,
-              ),
-              _NavItem(
-                icon: Icons.forum_outlined,
-                label: 'Rooms',
-                selected: currentIndex == 1,
-                selectedColor: colorScheme.primary,
-              ),
-              _NavItem(
-                icon: Icons.favorite_border,
-                label: 'Gratitude',
-                selected: currentIndex == 2,
-                selectedColor: colorScheme.primary,
-              ),
-              _NavItem(
-                icon: Icons.leaderboard_outlined,
-                label: 'Standing',
-                selected: currentIndex == 3,
-                selectedColor: colorScheme.primary,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final Color selectedColor;
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.selectedColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final base = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: selected ? Colors.white : Colors.black54),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: selected ? Colors.white : Colors.black54,
-          ),
-        ),
-      ],
-    );
-
-    if (!selected) return base;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 14),
-      decoration: BoxDecoration(
-        color: selectedColor,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: base,
-    );
-  }
-}
+// Bottom navigation moved to reusable widget in lib/widgets/bottom_nav.dart

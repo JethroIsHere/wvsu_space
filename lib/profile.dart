@@ -95,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withAlpha(20),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -122,42 +122,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 24),
 
-                // Community Standing card
-                _CardContainer(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Community Standing',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
+                // Community Standing card (navigates to full standing screen)
+                GestureDetector(
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRouter.communityStanding),
+                  child: _CardContainer(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Community Standing',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Good Standing 84/100',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 84,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: 0.84,
-                            minHeight: 10,
-                            color: BrandColors.appGreen,
-                            backgroundColor: Colors.black12,
+                              const SizedBox(height: 6),
+                              Text(
+                                'Good Standing 84/100',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 84,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: 0.84,
+                              minHeight: 10,
+                              color: BrandColors.appGreen,
+                              backgroundColor: Colors.black12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
@@ -252,7 +256,7 @@ class _CardContainer extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withAlpha(8),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),

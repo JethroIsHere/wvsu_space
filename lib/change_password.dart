@@ -266,10 +266,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         _showConfirm,
                         () => setState(() => _showConfirm = !_showConfirm),
                         validator: (v) {
-                          if (v == null || v.isEmpty)
+                          if (v == null || v.isEmpty) {
                             return 'Please confirm your new password';
-                          if (v != _newCtrl.text)
+                          }
+                          if (v != _newCtrl.text) {
                             return 'Passwords do not match';
+                          }
                           return null;
                         },
                       ),
@@ -364,8 +366,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     // Require at least one letter and one number
     final hasLetter = RegExp(r'[A-Za-z]').hasMatch(v);
     final hasDigit = RegExp(r'\d').hasMatch(v);
-    if (!hasLetter || !hasDigit)
+    if (!hasLetter || !hasDigit) {
       return 'Password must contain letters and numbers';
+    }
     return null;
   }
 }

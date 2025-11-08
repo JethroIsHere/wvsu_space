@@ -5,7 +5,7 @@ import '../choose.dart';
 import '../change_password.dart';
 import '../log_in.dart';
 import '../sign_up.dart';
-import '../home.dart';
+import '../main_shell.dart';
 import '../chat_lobby.dart';
 import '../matching_progress.dart';
 import '../admin/reports_admin.dart';
@@ -14,6 +14,7 @@ import '../admin/admin_dashboard.dart';
 import '../settings.dart';
 import '../profile.dart';
 import '../community_guidelines.dart';
+import '../community_standing.dart';
 import '../delete_account.dart';
 
 // Optional stub for chat session
@@ -35,49 +36,31 @@ class AppRouter {
   static const String adminDashboard = '/admin/dashboard';
   static const String settings = '/settings';
   static const String communityGuidelines = '/community-guidelines';
+  static const String communityStanding = '/standing';
   static const String deleteAccount = '/delete-account';
   static const String profile = '/profile';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case gettingStarted:
-        return MaterialPageRoute(
-          builder: (_) => const GettingStartedScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const GettingStartedScreen(), settings);
       case choose:
-        return MaterialPageRoute(
-          builder: (_) => const ChooseScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const ChooseScreen(), settings);
       case changePassword:
-        return MaterialPageRoute(
-          builder: (_) => const ChangePasswordScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const ChangePasswordScreen(), settings);
       case login:
-        return MaterialPageRoute(
-          builder: (_) => const LogInScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const LogInScreen(), settings);
       case signUp:
-        return MaterialPageRoute(
-          builder: (_) => const SignUpScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const SignUpScreen(), settings);
       case home:
-        return MaterialPageRoute(
-          builder: (_) => const HomeScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const MainShell(), settings);
       case lobby:
         final args = settings.arguments as Map<String, dynamic>?;
         final initialMode = args?['mode'] as String?;
         final lock = (args?['lock'] == true);
-        return MaterialPageRoute(
-          builder: (_) =>
-              ChatLobbyScreen(initialMode: initialMode, lockMode: lock),
-          settings: settings,
+        return _buildRoute(
+          ChatLobbyScreen(initialMode: initialMode, lockMode: lock),
+          settings,
         );
       case matching:
         final args = settings.arguments as Map<String, dynamic>?;
@@ -85,57 +68,50 @@ class AppRouter {
         final keywords =
             (args?['keywords'] as List?)?.whereType<String>().toList() ??
             const <String>[];
-        return MaterialPageRoute(
-          builder: (_) =>
-              MatchingProgressScreen(mode: mode, keywords: keywords),
-          settings: settings,
+        return _buildRoute(
+          MatchingProgressScreen(mode: mode, keywords: keywords),
+          settings,
         );
       case chatSession:
-        return MaterialPageRoute(
-          builder: (_) => const ChatSessionScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const ChatSessionScreen(), settings);
       case adminLogin:
-        return MaterialPageRoute(
-          builder: (_) => const AdminLoginScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const AdminLoginScreen(), settings);
       case adminDashboard:
-        return MaterialPageRoute(
-          builder: (_) => const AdminDashboardScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const AdminDashboardScreen(), settings);
       case adminReports:
-        return MaterialPageRoute(
-          builder: (_) => const ReportsAdminScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const ReportsAdminScreen(), settings);
       case AppRouter.settings:
-        return MaterialPageRoute(
-          builder: (_) => const SettingsScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const SettingsScreen(), settings);
       case AppRouter.communityGuidelines:
-        return MaterialPageRoute(
-          builder: (_) => const CommunityGuidelinesScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const CommunityGuidelinesScreen(), settings);
+      case AppRouter.communityStanding:
+        return _buildRoute(const CommunityStandingScreen(), settings);
       case AppRouter.deleteAccount:
-        return MaterialPageRoute(
-          builder: (_) => const DeleteAccountScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const DeleteAccountScreen(), settings);
       case AppRouter.profile:
-        return MaterialPageRoute(
-          builder: (_) => const ProfileScreen(),
-          settings: settings,
-        );
+        return _buildRoute(const ProfileScreen(), settings);
       default:
-        return MaterialPageRoute(
-          builder: (_) => const _NotFoundPage(),
-          settings: settings,
-        );
+        return _buildRoute(const _NotFoundPage(), settings);
     }
+  }
+
+  static PageRouteBuilder<dynamic> _buildRoute(
+    Widget child,
+    RouteSettings settings,
+  ) {
+    return PageRouteBuilder<dynamic>(
+      settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => child,
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 260),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final tween = Tween(
+          begin: const Offset(1.0, 0.0),
+          end: Offset.zero,
+        ).chain(CurveTween(curve: Curves.easeInOut));
+        return SlideTransition(position: animation.drive(tween), child: child);
+      },
+    );
   }
 }
 
