@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Email Verification - WVSU Space</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+      max-width: 480px;
+      width: 100%;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      background: #FCD34D;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: bold;
+      color: #1F2937;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1F2937;
+      margin-bottom: 12px;
+    }
+
+    p {
+      font-size: 16px;
+      color: #6B7280;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .spinner {
+      border: 4px solid #F3F4F6;
+      border-top: 4px solid #F59E0B;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: #10B981;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: white;
+    }
+
+    .error-icon {
+      width: 80px;
+      height: 80px;
+      background: #EF4444;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: white;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 32px;
+      background: #F59E0B;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: background 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #D97706;
+    }
+
+    .error-details {
+      background: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .error-details code {
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #991B1B;
+      word-break: break-all;
+    }
+
+    #loading, #success, #error {
+      display: none;
+    }
+
+    .show {
+      display: block !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Loading State -->
+    <div id="loading">
+      <div class="spinner"></div>
+      <h1>Verifying your email...</h1>
+      <p>Please wait while we confirm your email address.</p>
+    </div>
+
+    <!-- Success State -->
+    <div id="success">
+      <div class="success-icon">✓</div>
+      <h1>Email Verified!</h1>
+      <p>Your email address has been successfully verified. You can now return to the app and sign in.</p>
+      <a href="#" class="btn" onclick="closeWindow()">Close</a>
+    </div>
+
+    <!-- Error State -->
+    <div id="error">
+      <div class="error-icon">✕</div>
+      <h1>Verification Failed</h1>
+      <p id="error-message">We couldn't verify your email address.</p>
+      <div class="error-details">
+        <strong>Error:</strong><br>
+        <code id="error-code"></code>
+      </div>
+      <p style="font-size: 14px;">Please try requesting a new verification email from the app, or contact support if the problem persists.</p>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, applyActionCode } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+    // Your web app's Firebase configuration
+    // These values are safe to include in client-side code
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMJ8-Z5WBpkx_QqxgLvvnxqZKqwYz9hXo",
+      authDomain: "wvsu-space.firebaseapp.com",
+      projectId: "wvsu-space",
+      storageBucket: "wvsu-space.firebasestorage.app",
+      messagingSenderId: "866360433952",
+      appId: "1:866360433952:web:3d8f9d0b5e6c7f8a9b0c1d"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Get the action code from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    const oobCode = urlParams.get('oobCode');
+    const continueUrl = urlParams.get('continueUrl');
+
+    // Show loading state
+    document.getElementById('loading').classList.add('show');
+
+    async function handleVerification() {
+      if (!oobCode) {
+        showError('Invalid verification link', 'No verification code found in URL');
+        return;
+      }
+
+      if (mode !== 'verifyEmail') {
+        showError('Invalid action', `This link is for "${mode}" action, not email verification`);
+        return;
+      }
+
+      try {
+        // Apply the email verification code
+        await applyActionCode(auth, oobCode);
+        
+        // Success!
+        document.getElementById('loading').classList.remove('show');
+        document.getElementById('success').classList.add('show');
+        
+      } catch (error) {
+        let errorMessage = 'An unknown error occurred';
+        let errorCode = error.code || 'unknown';
+
+        switch (error.code) {
+          case 'auth/expired-action-code':
+            errorMessage = 'This verification link has expired. Please request a new one.';
+            break;
+          case 'auth/invalid-action-code':
+            errorMessage = 'This verification link is invalid or has already been used.';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'This account has been disabled.';
+            break;
+          case 'auth/user-not-found':
+            errorMessage = 'No account found with this email address.';
+            break;
+          default:
+            errorMessage = error.message || errorMessage;
+        }
+
+        showError(errorMessage, errorCode);
+      }
+    }
+
+    function showError(message, code) {
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('error').classList.add('show');
+      document.getElementById('error-message').textContent = message;
+      document.getElementById('error-code').textContent = code;
+    }
+
+    function closeWindow() {
+      // Try to close the window/tab
+      window.close();
+      
+      // If that doesn't work (browser security), redirect to app or show message
+      setTimeout(() => {
+        if (continueUrl) {
+          window.location.href = continueUrl;
+        } else {
+          alert('You can now close this window and return to the app.');
+        }
+      }, 100);
+    }
+
+    // Make closeWindow available globally
+    window.closeWindow = closeWindow;
+
+    // Start verification process
+    handleVerification();
+  </script>
+</body>
+</html>

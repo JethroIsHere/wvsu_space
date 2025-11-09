@@ -473,24 +473,10 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                       ),
                       onPressed: _loading
                           ? null
-                          : () async {
-                              // Request review: create a review request doc under admin or user's subcollection
-                              final uid =
-                                  FirebaseAuth.instance.currentUser?.uid;
-                              if (uid == null) return;
-                              final messenger = ScaffoldMessenger.of(context);
-                              await FirebaseFirestore.instance
-                                  .collection('admin_review_requests')
-                                  .add({
-                                    'user': uid,
-                                    'time': FieldValue.serverTimestamp(),
-                                    'score': _score ?? 100,
-                                  });
-                              if (!mounted) return;
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Review requested'),
-                                ),
+                          : () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRouter.requestReview,
                               );
                             },
                       child: const Text('Request Review'),

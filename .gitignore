@@ -33,6 +33,14 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Node.js / npm (for scripts folder)
+**/node_modules/
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+**/.npm/
+**/.yarn/
+
 # Symbolication related
 app.*.symbols
 
@@ -75,6 +83,21 @@ ios/Runner/GoogleService-Info.plist
 **/*credentials*.json
 **/*-credentials.json
 
+# Firebase config backups and templates
+firebase.json.backup
+firebase_new.json
+firebase_old.json
+
+# Admin script backups and templates
+scripts/package_new.json
+scripts/README_NEW.md
+
+# Flutter code templates (not part of active codebase)
+lib/admin/admin_login_updated.dart
+lib/**/*_updated.dart
+lib/**/*_new.dart
+lib/**/*_template.dart
+
 # Android signing
 android/key.properties
 **/*.keystore
@@ -95,3 +118,8 @@ android/key.properties
 
 # Editor workspace (may hold local secrets)
 .vscode/
+
+# Email verification helpers (already used, kept for reference)
+scripts/verify_admin_email.js
+EMAIL_VERIFICATION_*.md
+QUICKSTART_EMAIL_FIX.md

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'router/app_router.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -11,6 +12,35 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
+
+  static const _kNotificationsKey = 'notifications_enabled';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getBool(_kNotificationsKey);
+      if (saved != null) {
+        setState(() => _notificationsEnabled = saved);
+      }
+    } catch (_) {
+      // If prefs fail to load for any reason, keep default value.
+    }
+  }
+
+  Future<void> _saveNotificationsPreference(bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kNotificationsKey, value);
+    } catch (_) {
+      // Ignore failures - preference saving is best-effort local persistence.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +80,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: const Text('Notifications'),
                 trailing: Switch.adaptive(
                   value: _notificationsEnabled,
-                  onChanged: (v) {
+                  onChanged: (v) async {
                     setState(() => _notificationsEnabled = v);
-                    // TODO: persist preference to Firestore or local storage if desired
+                    await _saveNotificationsPreference(v);
                   },
                 ),
               ),

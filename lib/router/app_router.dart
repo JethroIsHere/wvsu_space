@@ -11,11 +11,13 @@ import '../matching_progress.dart';
 import '../admin/reports_admin.dart';
 import '../admin/admin_login.dart';
 import '../admin/admin_dashboard.dart';
+import '../admin/admin_settings.dart';
 import '../settings.dart';
 import '../profile.dart';
 import '../community_guidelines.dart';
 import '../community_standing.dart';
 import '../delete_account.dart';
+import '../request_review.dart';
 
 // Optional stub for chat session
 import '../chat_session.dart';
@@ -34,11 +36,13 @@ class AppRouter {
   static const String adminReports = '/admin/reports';
   static const String adminLogin = '/admin/login';
   static const String adminDashboard = '/admin/dashboard';
+  static const String adminSettings = '/admin/settings';
   static const String settings = '/settings';
   static const String communityGuidelines = '/community-guidelines';
   static const String communityStanding = '/standing';
   static const String deleteAccount = '/delete-account';
   static const String profile = '/profile';
+  static const String requestReview = '/request-review';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -78,6 +82,8 @@ class AppRouter {
         return _buildRoute(const AdminLoginScreen(), settings);
       case adminDashboard:
         return _buildRoute(const AdminDashboardScreen(), settings);
+      case adminSettings:
+        return _buildRoute(const AdminSettingsScreen(), settings);
       case adminReports:
         return _buildRoute(const ReportsAdminScreen(), settings);
       case AppRouter.settings:
@@ -90,6 +96,8 @@ class AppRouter {
         return _buildRoute(const DeleteAccountScreen(), settings);
       case AppRouter.profile:
         return _buildRoute(const ProfileScreen(), settings);
+      case AppRouter.requestReview:
+        return _buildRoute(const RequestReviewScreen(), settings);
       default:
         return _buildRoute(const _NotFoundPage(), settings);
     }

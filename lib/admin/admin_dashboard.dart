@@ -77,7 +77,8 @@ class AdminDashboardScreen extends StatelessWidget {
                             ),
                             Text(
                               _fmtNow(),
-                              style: Theme.of(context).textTheme.bodySmall,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.black),
                             ),
                           ],
                         ),
@@ -98,7 +99,10 @@ class AdminDashboardScreen extends StatelessWidget {
                                 Icons.settings,
                                 color: Colors.black87,
                               ),
-                              onPressed: () {},
+                              onPressed: () => Navigator.pushNamed(
+                                context,
+                                AppRouter.adminSettings,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -200,15 +204,79 @@ class AdminDashboardScreen extends StatelessWidget {
     try {
       final t = await user.getIdTokenResult(true);
       final claims = t.claims ?? {};
+
       // Use a context captured synchronously above to avoid using the
       // original BuildContext across the async gap (satisfies linter).
       showDialog<void>(
         context: dialogContext,
         builder: (ctx) => AlertDialog(
-          title: const Text('Token claims'),
-          content: SingleChildScrollView(
-            child: Text(
-              claims.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+          title: Row(
+            children: [
+              Icon(Icons.verified_user, color: Colors.amber.shade700),
+              const SizedBox(width: 12),
+              const Text('Account Details'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildClaimSection(
+                    ctx,
+                    'Authentication',
+                    Icons.account_circle,
+                    [
+                      _buildClaimRow('Email', claims['email'] ?? 'N/A'),
+                      _buildClaimRow(
+                        'User ID',
+                        claims['user_id'] ?? 'N/A',
+                        monospace: true,
+                      ),
+                      _buildClaimRow(
+                        'Email Verified',
+                        claims['email_verified'] == true ? '✓ Yes' : '✗ No',
+                        valueColor: claims['email_verified'] == true
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                      _buildClaimRow(
+                        'Sign-in Provider',
+                        claims['sign_in_provider'] ?? 'N/A',
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  _buildClaimSection(ctx, 'Permissions', Icons.shield, [
+                    _buildClaimRow(
+                      'Admin Access',
+                      claims['admin'] == true ? '✓ Granted' : '✗ None',
+                      valueColor: claims['admin'] == true
+                          ? Colors.green
+                          : Colors.grey,
+                    ),
+                  ]),
+                  const Divider(height: 24),
+                  _buildClaimSection(ctx, 'Session Info', Icons.schedule, [
+                    _buildClaimRow('Project', claims['aud'] ?? 'N/A'),
+                    _buildClaimRow(
+                      'Issued At',
+                      _formatTimestamp(claims['iat']),
+                    ),
+                    _buildClaimRow(
+                      'Expires At',
+                      _formatTimestamp(claims['exp']),
+                    ),
+                    _buildClaimRow(
+                      'Auth Time',
+                      _formatTimestamp(claims['auth_time']),
+                    ),
+                    _buildClaimRow('Issuer', _formatIssuer(claims['iss'])),
+                  ]),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -224,6 +292,140 @@ class AdminDashboardScreen extends StatelessWidget {
         SnackBar(content: Text('Failed to read token claims: $e')),
       );
     }
+  }
+
+  Widget _buildClaimSection(
+    BuildContext context,
+    String title,
+    IconData icon,
+    List<Widget> children,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: Colors.black54),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _buildClaimRow(
+    String label,
+    String value, {
+    bool monospace = false,
+    Color? valueColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontFamily: monospace ? 'Courier' : null,
+                color: valueColor ?? Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return 'N/A';
+    try {
+      final seconds = timestamp is int
+          ? timestamp
+          : int.tryParse(timestamp.toString());
+      if (seconds == null) return 'Invalid';
+
+      final date = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+      final now = DateTime.now();
+      final diff = date.difference(now);
+
+      // Format: "Nov 9, 2025 at 3:45 PM"
+      final formattedDate =
+          '${_monthName(date.month)} ${date.day}, ${date.year} at ${_formatTime(date)}';
+
+      // Add relative time for expiry
+      if (diff.isNegative) {
+        return '$formattedDate (expired)';
+      } else if (diff.inHours < 24) {
+        return '$formattedDate (in ${diff.inHours}h)';
+      } else {
+        return formattedDate;
+      }
+    } catch (e) {
+      return 'Invalid';
+    }
+  }
+
+  String _monthName(int month) {
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month];
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour > 12
+        ? date.hour - 12
+        : (date.hour == 0 ? 12 : date.hour);
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
+  }
+
+  String _formatIssuer(dynamic issuer) {
+    if (issuer == null) return 'N/A';
+    final issuerStr = issuer.toString();
+    // Extract just the domain from the issuer URL
+    final uri = Uri.tryParse(issuerStr);
+    if (uri != null) {
+      return uri.host.replaceAll('securetoken.google.com', 'Firebase Auth');
+    }
+    return issuerStr;
   }
 
   static void _notImplemented(BuildContext context) {
@@ -322,7 +524,9 @@ class _NavTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.black),
                     ),
                   ],
                 ),
@@ -380,7 +584,12 @@ class _MetricTile extends StatelessWidget {
               children: [
                 Text(label, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 2),
-                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  subtitle,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.black),
+                ),
               ],
             ),
           ),
