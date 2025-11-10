@@ -75,7 +75,7 @@ secrets/
 !/.env.example
 
 # Firebase/Google config (often contain API keys)
-lib/firebase_options.dart
+# lib/firebase_options.dart - COMMENTED OUT: needed for CI/CD
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 **/serviceAccount*.json
