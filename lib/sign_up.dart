@@ -41,11 +41,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       // 1. Create user in Firebase Auth
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
       // 2. Save additional user info (nickname) to Firestore
       if (credential.user != null) {
@@ -53,10 +53,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
             .collection('users')
             .doc(credential.user!.uid) // Use user's unique ID as document ID
             .set({
-              'nickname': _nicknameController.text.trim(),
-              'email': _emailController.text.trim(),
-              'createdAt': Timestamp.now(), // Optional: add creation timestamp
-            });
+          'nickname': _nicknameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'createdAt': Timestamp.now(), // Optional: add creation timestamp
+          'standing': 100, // Initialize community standing score
+        });
 
         // 3. Navigate to Home Screen on success
         if (mounted) {

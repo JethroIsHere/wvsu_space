@@ -67,11 +67,35 @@ service cloud.firestore {
 			allow delete: if isAdmin();
 		}
 
+		// Ratings: allow any signed-in user to create a rating document.
+		// Backend Cloud Function will process standing changes. No client reads needed.
+		match /ratings/{id} {
+			allow create: if isSignedIn();
+			allow read, update, delete: if false;
+		}
+
 		// Users: allow admins to read user profiles (for moderation UI)
 		// Also allow a user to read their own profile document.
+		// Allow reading other users' docs for rating/report transactions
 		match /users/{uid} {
-			allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
-			allow create, update, delete: if false; // no client writes via rules here
+			allow read: if isAdmin() || 
+				(request.auth != null && request.auth.uid == uid) ||
+				isSignedIn(); // Allow reading for transactions
+			// Allow updating standing field only (for rating system)
+			allow update: if isSignedIn() && 
+				request.resource.data.diff(resource.data).affectedKeys().hasOnly(['standing']);
+			// Allow creating user doc if it only contains standing and uid fields (for rating system initialization)
+			allow create: if isSignedIn() && 
+				request.resource.data.keys().hasOnly(['standing', 'uid']) &&
+				request.resource.data.standing is number;
+			allow delete: if false;
+			
+			// Allow clients to write standing_reports for rating/report tracking
+			match /standing_reports/{reportId} {
+				allow read: if request.auth != null && request.auth.uid == uid;
+				allow create: if isSignedIn();
+				allow update, delete: if false;
+			}
 		}
 	}
 }

@@ -206,10 +206,8 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
         docs = snap.docs;
       } on FirebaseException catch (_) {
         // Fall back to simple query and filter in memory if index is missing
-        final simple = await queue
-            .where('status', isEqualTo: 'waiting')
-            .limit(25)
-            .get();
+        final simple =
+            await queue.where('status', isEqualTo: 'waiting').limit(25).get();
         final kw = widget.keywords.toSet();
         docs = simple.docs.where((d) {
           final data = d.data();
@@ -217,7 +215,7 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
           if (widget.mode == 'keyword' && kw.isNotEmpty) {
             final theirs =
                 (data['keywords'] as List?)?.map((e) => e.toString()).toSet() ??
-                {};
+                    {};
             if (!kw.any(theirs.contains)) return false;
           }
           return true;
@@ -302,14 +300,14 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
     final title = _currentStep == 0
         ? 'Finding available users..'
         : _currentStep == 1
-        ? 'Matching interests'
-        : 'Creating secure connection';
+            ? 'Matching interests'
+            : 'Creating secure connection';
 
     final icon = _currentStep == 0
         ? Icons.groups_2_outlined
         : _currentStep == 1
-        ? Icons.bolt_outlined
-        : Icons.lock_outline;
+            ? Icons.bolt_outlined
+            : Icons.lock_outline;
 
     return PopScope(
       canPop: true,
@@ -324,11 +322,9 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
           toolbarHeight: 64,
           title: Text(
             'Finding match',
-            style:
-                theme.textTheme.titleLarge?.copyWith(
+            style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
-                  fontSize:
-                      ((theme.textTheme.titleLarge?.fontSize ?? 20) + 2) *
+                  fontSize: ((theme.textTheme.titleLarge?.fontSize ?? 20) + 2) *
                       scale,
                 ) ??
                 TextStyle(
@@ -343,135 +339,133 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
               constraints: const BoxConstraints(maxWidth: 420),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 8),
-                    _AnimatedCircleIcon(
-                      icon: icon,
-                      color: cs.primary,
-                      scale: _scale,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      title,
-                      style:
-                          theme.textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            fontSize:
-                                ((theme.textTheme.headlineLarge?.fontSize ??
-                                        28) +
-                                    2) *
-                                scale,
-                          ) ??
-                          TextStyle(
-                            fontSize: 30 * scale,
-                            fontWeight: FontWeight.w800,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Finding someone perfect for you',
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(
-                            fontSize:
-                                (theme.textTheme.bodyMedium?.fontSize ?? 14) *
-                                scale,
-                          ) ??
-                          TextStyle(fontSize: 14 * scale),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Matching based on your interests:',
-                      style:
-                          theme.textTheme.bodySmall?.copyWith(
-                            fontSize:
-                                (theme.textTheme.bodySmall?.fontSize ?? 12) *
-                                scale,
-                          ) ??
-                          TextStyle(fontSize: 12 * scale),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: interests
-                          .take(2)
-                          .map(
-                            (k) => Chip(
-                              label: Text(
-                                k,
-                                style: TextStyle(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 11 * scale,
-                                ),
-                              ),
-                              backgroundColor: cs.primary.withValues(
-                                alpha: 0.1,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 18),
-                    _StepTile(
-                      index: 1,
-                      label: 'Finding available users',
-                      state: _tileState(0),
-                      primary: cs.primary,
-                      fontSize: 13 * scale,
-                    ),
-                    const SizedBox(height: 10),
-                    _StepTile(
-                      index: 2,
-                      label: 'Matching interests',
-                      state: _tileState(1),
-                      primary: cs.primary,
-                      fontSize: 13 * scale,
-                    ),
-                    const SizedBox(height: 10),
-                    _StepTile(
-                      index: 3,
-                      label: 'Creating secure connection',
-                      state: _tileState(2),
-                      primary: cs.primary,
-                      fontSize: 13 * scale,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Searching for ${_elapsedSeconds}s',
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(
-                            fontSize:
-                                (theme.textTheme.bodyMedium?.fontSize ?? 14) *
-                                scale,
-                          ) ??
-                          TextStyle(fontSize: 14 * scale),
-                    ),
-                    const SizedBox(height: 18),
-                    _TipCard(fontSize: 13 * scale),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _cancel,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 56),
-                          backgroundColor: Colors.black.withValues(alpha: 0.06),
-                          foregroundColor: Colors.black87,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Cancel'),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 8),
+                      _AnimatedCircleIcon(
+                        icon: icon,
+                        color: cs.primary,
+                        scale: _scale,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        title,
+                        style: theme.textTheme.headlineLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontSize:
+                                  ((theme.textTheme.headlineLarge?.fontSize ??
+                                              28) +
+                                          2) *
+                                      scale,
+                            ) ??
+                            TextStyle(
+                              fontSize: 30 * scale,
+                              fontWeight: FontWeight.w800,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Finding someone perfect for you',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize:
+                                  (theme.textTheme.bodyMedium?.fontSize ?? 14) *
+                                      scale,
+                            ) ??
+                            TextStyle(fontSize: 14 * scale),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Matching based on your interests:',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize:
+                                  (theme.textTheme.bodySmall?.fontSize ?? 12) *
+                                      scale,
+                            ) ??
+                            TextStyle(fontSize: 12 * scale),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: interests
+                            .take(2)
+                            .map(
+                              (k) => Chip(
+                                label: Text(
+                                  k,
+                                  style: TextStyle(
+                                    color: cs.primary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11 * scale,
+                                  ),
+                                ),
+                                backgroundColor:
+                                    cs.primary.withValues(alpha: 0.1),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 18),
+                      _StepTile(
+                        index: 1,
+                        label: 'Finding available users',
+                        state: _tileState(0),
+                        primary: cs.primary,
+                        fontSize: 13 * scale,
+                      ),
+                      const SizedBox(height: 10),
+                      _StepTile(
+                        index: 2,
+                        label: 'Matching interests',
+                        state: _tileState(1),
+                        primary: cs.primary,
+                        fontSize: 13 * scale,
+                      ),
+                      const SizedBox(height: 10),
+                      _StepTile(
+                        index: 3,
+                        label: 'Creating secure connection',
+                        state: _tileState(2),
+                        primary: cs.primary,
+                        fontSize: 13 * scale,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Searching for ${_elapsedSeconds}s',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize:
+                                  (theme.textTheme.bodyMedium?.fontSize ?? 14) *
+                                      scale,
+                            ) ??
+                            TextStyle(fontSize: 14 * scale),
+                      ),
+                      const SizedBox(height: 18),
+                      _TipCard(fontSize: 13 * scale),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _cancel,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 56),
+                            backgroundColor:
+                                Colors.black.withValues(alpha: 0.06),
+                            foregroundColor: Colors.black87,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -250,3 +250,112 @@ exports.deleteUserAccount = functions
       });
     }
   });
+
+// When a rating is created, adjust the rated user's community standing and
+// append an entry to their standing_reports subcollection.
+exports.onRatingCreate = functions
+  .region('us-central1')
+  .firestore.document('ratings/{ratingId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data() || {};
+    let ratedUser = data.ratedUser;
+    const ratedBy = data.ratedBy;
+    const rating = Number(data.rating || 0);
+    const sessionId = data.sessionId;
+    if (!ratedUser || !ratedBy || !rating || rating < 1 || rating > 5) {
+      console.warn('Incomplete rating payload (will try to fill from session)', data);
+    }
+
+    // Optional: dedupe - don't allow the same rater to rate the same session twice
+    if (sessionId && ratedBy) {
+      const existing = await db
+        .collection('ratings')
+        .where('sessionId', '==', sessionId)
+        .where('ratedBy', '==', ratedBy)
+        .get();
+      if (existing.size > 1) {
+        console.log('Duplicate rating detected, skipping standing update');
+        return;
+      }
+    }
+
+    // If ratedUser missing, try to infer from session
+    if (!ratedUser && sessionId) {
+      try {
+        const sessSnap = await db.collection('sessions').doc(sessionId).get();
+        if (sessSnap.exists) {
+          const sdata = sessSnap.data() || {};
+          const parts = Array.isArray(sdata.participants) ? sdata.participants : [];
+          if (parts.length === 2 && ratedBy && parts.includes(ratedBy)) {
+            ratedUser = parts.find((p) => p !== ratedBy);
+            if (ratedUser) {
+              // Update the rating doc with resolved ratedUser for auditability
+              await snap.ref.set({ ratedUser }, { merge: true });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to infer ratedUser from session', e);
+      }
+    }
+
+    if (!ratedUser) {
+      console.warn('No ratedUser available; skipping standing update');
+      return;
+    }
+
+    // Map 1..5 stars to deltas per product spec: 1:-2, 2:-1, 3:0, 4:+1, 5:+2
+    const deltas = { 1: -2, 2: -1, 3: 0, 4: +1, 5: +2 };
+    const delta = deltas[rating] || 0;
+    if (delta === 0) return; // Neutral rating, no update
+
+    const userRef = db.collection('users').doc(ratedUser);
+    await db.runTransaction(async (tx) => {
+      const userSnap = await tx.get(userRef);
+      const current = (userSnap.exists && userSnap.data().standing) || 100;
+      const newStanding = Math.max(0, Math.min(100, Number(current) + delta));
+      tx.set(userRef, { standing: newStanding }, { merge: true });
+      tx.set(userRef.collection('standing_reports').doc(), {
+        title: `Chat Rating: ${rating} star${rating === 1 ? '' : 's'}`,
+        delta,
+        type: 'chat_rating',
+        time: admin.firestore.FieldValue.serverTimestamp(),
+        sourceRatingId: snap.id,
+        sessionId: sessionId || null,
+      });
+    });
+  });
+
+// When a report is created, penalize the reported user according to reason.
+exports.onReportCreate = functions
+  .region('us-central1')
+  .firestore.document('reports/{reportId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data() || {};
+    const reportedUserId = data.reportedUserId || data.reportedUid; // support both keys
+    const reason = (data.reason || '').toString();
+    if (!reportedUserId) return; // nothing to do
+
+    // Penalties: Harassment -10, Inappropriate Content -8, Spam -4, Other -2
+    const reasonKey = reason.toLowerCase();
+    let delta = -2; // default
+    if (reasonKey.includes('harass')) delta = -10;
+    else if (reasonKey.includes('inappropriate')) delta = -8;
+    else if (reasonKey.includes('spam')) delta = -4;
+
+    const userRef = db.collection('users').doc(reportedUserId);
+    await db.runTransaction(async (tx) => {
+      const userSnap = await tx.get(userRef);
+      const current = (userSnap.exists && userSnap.data().standing) || 100;
+      const newStanding = Math.max(0, Math.min(100, Number(current) + delta));
+      tx.set(userRef, { standing: newStanding }, { merge: true });
+      tx.set(userRef.collection('standing_reports').doc(), {
+        title: `Report: ${reason || 'Other'}`,
+        delta,
+        type: 'report',
+        time: admin.firestore.FieldValue.serverTimestamp(),
+        sourceReportId: snap.id,
+        sessionId: data.sessionId || null,
+      });
+    });
+  });

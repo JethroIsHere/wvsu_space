@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'widgets/rate_conversation_dialog.dart';
 
 class ChatSessionScreen extends StatefulWidget {
   const ChatSessionScreen({super.key});
@@ -58,22 +59,22 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
       canPop: true,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final navigator = Navigator.of(context);
         final ok = await _confirmEnd(context);
         if (ok) {
           await _endChat();
-          navigator.pop();
+          if (!context.mounted) return;
+          await _showRatingDialogAndNavigate(context);
         }
       },
       child: Scaffold(
         appBar: AppBar(
           leading: BackButton(
             onPressed: () async {
-              final navigator = Navigator.of(context);
               final ok = await _confirmEnd(context);
               if (ok) {
                 await _endChat();
-                navigator.pop();
+                if (!context.mounted) return;
+                await _showRatingDialogAndNavigate(context);
               }
             },
           ),
@@ -87,11 +88,11 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
             PopupMenuButton<String>(
               onSelected: (value) async {
                 if (value == 'end') {
-                  final navigator = Navigator.of(context);
                   final ok = await _confirmEnd(context);
                   if (ok) {
                     await _endChat();
-                    navigator.pop();
+                    if (!context.mounted) return;
+                    await _showRatingDialogAndNavigate(context);
                   }
                 }
               },
@@ -155,35 +156,35 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
         .doc(id)
         .snapshots()
         .listen((doc) async {
-          final data = doc.data();
-          if (data == null) return;
-          final status = data['status'] as String?;
-          final endedBy = data['endedBy'] as String?;
-          final myUid = FirebaseAuth.instance.currentUser?.uid;
-          if (!_endAlertShown &&
-              status == 'ended' &&
-              endedBy != null &&
-              endedBy != myUid) {
-            _endAlertShown = true;
-            if (!mounted) return;
-            final navigator = Navigator.of(context);
-            await showDialog<void>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Chat ended'),
-                content: const Text('Your chat partner left the conversation.'),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('OK'),
-                  ),
-                ],
+      final data = doc.data();
+      if (data == null) return;
+      final status = data['status'] as String?;
+      final endedBy = data['endedBy'] as String?;
+      final myUid = FirebaseAuth.instance.currentUser?.uid;
+      if (!_endAlertShown &&
+          status == 'ended' &&
+          endedBy != null &&
+          endedBy != myUid) {
+        _endAlertShown = true;
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Chat ended'),
+            content: const Text('Your chat partner left the conversation.'),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
               ),
-            );
-            if (!mounted) return;
-            navigator.pop();
-          }
-        });
+            ],
+          ),
+        );
+        if (!mounted) return;
+        // Show rating dialog before navigating away
+        await _showRatingDialogAndNavigate(context);
+      }
+    });
   }
 
   Future<void> _endChat({String? reason}) async {
@@ -218,10 +219,8 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
     setState(() => _sending = true);
     try {
       final db = FirebaseFirestore.instance;
-      final messages = db
-          .collection('sessions')
-          .doc(sessionId)
-          .collection('messages');
+      final messages =
+          db.collection('sessions').doc(sessionId).collection('messages');
       await messages.add({
         'text': text,
         'senderId': uid,
@@ -269,6 +268,44 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
         false;
   }
 
+  Future<void> _showRatingDialogAndNavigate(BuildContext context) async {
+    final sessionId = _sessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    // Verify user is authenticated before showing dialog
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Authentication error. Please sign in again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      Navigator.of(context).pop();
+      return;
+    }
+
+    // Show rating dialog
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => RateConversationDialog(
+        sessionId: sessionId,
+        onComplete: () {
+          // Dialog will close itself, then we navigate
+        },
+      ),
+    );
+
+    // After rating dialog closes, navigate back
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+  }
+
   Future<void> _openReportDialog() async {
     final sessionId = _sessionId;
     if (sessionId == null) return;
@@ -282,8 +319,7 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
     ];
     String? selected;
     final controller = TextEditingController();
-    final ok =
-        await showDialog<bool>(
+    final ok = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Report chat'),
@@ -352,16 +388,29 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
       // Optional: pull nicknames to include in report for easier admin display
       String? reporterNickname;
       try {
-        final reporterSnap = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .get();
+        final reporterSnap =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
         reporterNickname = reporterSnap.data()?['nickname'] as String?;
       } catch (_) {}
       // Do not attempt to read other users' profiles from the client.
       // Reported user's nickname is admin-only data; it will be populated by
       // admin backfill or a server-side job. We keep reportedNickname null here.
 
+      // Calculate penalty based on report reason
+      int penalty = -2; // default for "Other"
+      final reasonLower = selected?.toLowerCase() ?? '';
+      if (reasonLower.contains('harass')) {
+        penalty = -10;
+      } else if (reasonLower.contains('inappropriate')) {
+        penalty = -8;
+      } else if (reasonLower.contains('spam')) {
+        penalty = -4;
+      }
+
+      debugPrint(
+          'Report submission - Reporter: $uid, Reported: $reportedUid, Reason: $selected, Penalty: $penalty');
+
+      // 1. Create the report
       await FirebaseFirestore.instance.collection('reports').add({
         'sessionId': sessionId,
         'reporterId': uid,
@@ -373,6 +422,46 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
         'details': controller.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // 2. Update reported user's standing using transaction if we have their UID
+      if (reportedUid != null) {
+        final reportedUserRef =
+            FirebaseFirestore.instance.collection('users').doc(reportedUid);
+
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          final userDoc = await transaction.get(reportedUserRef);
+
+          if (!userDoc.exists) {
+            // Create user document with initial standing + penalty
+            debugPrint(
+                'Creating new user doc for $reportedUid with standing: ${100 + penalty}');
+            transaction.set(reportedUserRef, {
+              'standing': 100 + penalty,
+              'uid': reportedUid,
+            });
+          } else {
+            // Update existing standing
+            final currentStanding = userDoc.data()?['standing'] ?? 100;
+            final newStanding = currentStanding + penalty;
+            debugPrint(
+                'Updating standing for $reportedUid: $currentStanding -> $newStanding');
+            transaction.update(reportedUserRef, {
+              'standing': newStanding,
+            });
+          }
+        });
+
+        debugPrint('Report penalty applied successfully');
+
+        // 3. Add standing report
+        await reportedUserRef.collection('standing_reports').add({
+          'title': 'Report: ${selected ?? "Other"}',
+          'delta': penalty,
+          'type': 'report',
+          'time': FieldValue.serverTimestamp(),
+          'sessionId': sessionId,
+        });
+      }
 
       // End the chat as part of reporting
       await _endChat(reason: 'reported');

@@ -123,3 +123,6 @@ android/key.properties
 scripts/verify_admin_email.js
 EMAIL_VERIFICATION_*.md
 QUICKSTART_EMAIL_FIX.md
+
+# Future feature specifications (work in progress)
+FUTURE_FEATURE_*.md

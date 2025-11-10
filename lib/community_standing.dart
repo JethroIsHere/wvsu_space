@@ -46,15 +46,56 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final data = snap.data();
       return data?['nickname'] as String?;
     } catch (e) {
       debugPrint('Failed to fetch nickname: $e');
       return null;
+    }
+  }
+
+  Future<void> _recalculateStanding() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      // Get all standing reports
+      final reportsSnapshot = await docRef
+          .collection('standing_reports')
+          .orderBy('time', descending: false)
+          .get();
+
+      // Calculate standing from scratch (start at 100)
+      int calculatedStanding = 100;
+      for (var doc in reportsSnapshot.docs) {
+        final delta = (doc.data()['delta'] as num?)?.toInt() ?? 0;
+        calculatedStanding += delta;
+        debugPrint(
+            'Report: ${doc.data()['title']}, Delta: $delta, New standing: $calculatedStanding');
+      }
+
+      debugPrint('Recalculated standing: $calculatedStanding');
+
+      // Update the standing in the database
+      await docRef.update({'standing': calculatedStanding});
+
+      // Reload the display
+      await _loadStanding();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Standing recalculated: $calculatedStanding')),
+      );
+    } catch (e) {
+      debugPrint('Error recalculating standing: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -71,15 +112,31 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
     }
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+      final doc = await docRef.get();
       final data = doc.data() ?? {};
+
+      // If user document doesn't have standing field at all, initialize it to 100
+      // Don't reset if it's 0 or negative - those are legitimate low scores
+      if (!data.containsKey('standing') && doc.exists) {
+        await docRef.update({'standing': 100});
+        data['standing'] = 100;
+      }
+
       final scoreVal = data['standing'] ?? data['score'] ?? 100;
       final score = (scoreVal is num)
           ? scoreVal.toInt()
-          : int.tryParse('$scoreVal') ?? 0;
+          : int.tryParse('$scoreVal') ?? 100; // Default to 100 instead of 0
+
+      debugPrint('=== Community Standing Debug ===');
+      debugPrint('UID: $uid');
+      debugPrint('Document exists: ${doc.exists}');
+      debugPrint('Has standing field: ${data.containsKey('standing')}');
+      debugPrint('Raw standing value: ${data['standing']}');
+      debugPrint('Raw standing type: ${data['standing'].runtimeType}');
+      debugPrint('Score val: $scoreVal');
+      debugPrint('Parsed score: $score');
+      debugPrint('===============================');
 
       final reportsSnap = await FirebaseFirestore.instance
           .collection('users')
@@ -167,9 +224,9 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.titleMedium
                                             ?.copyWith(
-                                              color: Colors.white70,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       );
                                     }
                                     if (nickname == null || nickname.isEmpty) {
@@ -179,11 +236,11 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                                       'Hi, $nickname!',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                      style:
+                                          theme.textTheme.titleMedium?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     );
                                   },
                                 ),
@@ -193,6 +250,12 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                         ),
                         Row(
                           children: [
+                            IconButton(
+                              icon: const Icon(Icons.refresh),
+                              color: Colors.white,
+                              tooltip: 'Recalculate Standing',
+                              onPressed: _recalculateStanding,
+                            ),
                             IconButton(
                               icon: const Icon(Icons.settings),
                               color: Colors.white,
@@ -315,9 +378,9 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                                         '$score',
                                         style: theme.textTheme.headlineSmall
                                             ?.copyWith(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                               ),
                             ],
@@ -442,12 +505,12 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                                     const SizedBox(width: 12),
                                     Text(
                                       (delta >= 0 ? '+$delta' : '$delta'),
-                                      style: theme.textTheme.bodyLarge
-                                          ?.copyWith(
-                                            color: delta >= 0
-                                                ? BrandColors.appGreen
-                                                : Colors.red,
-                                          ),
+                                      style:
+                                          theme.textTheme.bodyLarge?.copyWith(
+                                        color: delta >= 0
+                                            ? BrandColors.appGreen
+                                            : Colors.red,
+                                      ),
                                     ),
                                   ],
                                 ),
