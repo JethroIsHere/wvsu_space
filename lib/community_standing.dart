@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -19,11 +21,107 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
   bool _loading = true;
   late final Future<String?> _nicknameFuture;
 
+  // Stream subscriptions for real-time updates
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
+  StreamSubscription<QuerySnapshot>? _reportsSubscription;
+
   @override
   void initState() {
     super.initState();
-    _loadStanding();
+    _setupRealtimeListeners();
     _nicknameFuture = _fetchNickname();
+  }
+
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    _reportsSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupRealtimeListeners() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      setState(() {
+        _score = null;
+        _recent = [];
+        _loading = false;
+      });
+      return;
+    }
+
+    // Listen to user document for standing changes
+    _userSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen((docSnapshot) async {
+      if (!mounted) return;
+
+      final data = docSnapshot.data() ?? {};
+
+      // If user document doesn't have standing field, initialize it to 100
+      if (!data.containsKey('standing') && docSnapshot.exists) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .update({'standing': 100});
+        return; // Will trigger another snapshot with updated value
+      }
+
+      final scoreVal = data['standing'] ?? data['score'] ?? 100;
+      final score = (scoreVal is num)
+          ? scoreVal.toInt()
+          : int.tryParse('$scoreVal') ?? 100;
+
+      debugPrint('=== Community Standing Real-time Update ===');
+      debugPrint('UID: $uid');
+      debugPrint('Document exists: ${docSnapshot.exists}');
+      debugPrint('Has standing field: ${data.containsKey('standing')}');
+      debugPrint('Raw standing value: ${data['standing']}');
+      debugPrint('Parsed score: $score');
+      debugPrint('==========================================');
+
+      if (!mounted) return;
+      setState(() {
+        _score = score.clamp(0, 100);
+        _loading = false;
+      });
+    }, onError: (error) {
+      debugPrint('Error listening to user document: $error');
+      if (!mounted) return;
+      setState(() {
+        _score = null;
+        _loading = false;
+      });
+    });
+
+    // Listen to standing reports for recent activity
+    _reportsSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('standing_reports')
+        .orderBy('time', descending: true)
+        .limit(6)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+
+      final recent = snapshot.docs.map((d) {
+        final m = d.data();
+        return {
+          'title': m['title'] ?? 'Report',
+          'delta': m['delta'] ?? 0,
+          'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        };
+      }).toList();
+
+      setState(() {
+        _recent = recent;
+      });
+    }, onError: (error) {
+      debugPrint('Error listening to standing reports: $error');
+    });
   }
 
   String _standingLabel(int? score) {
@@ -80,11 +178,8 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
 
       debugPrint('Recalculated standing: $calculatedStanding');
 
-      // Update the standing in the database
+      // Update the standing in the database (real-time listener will update UI automatically)
       await docRef.update({'standing': calculatedStanding});
-
-      // Reload the display
-      await _loadStanding();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,78 +191,6 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
-    }
-  }
-
-  Future<void> _loadStanding() async {
-    setState(() => _loading = true);
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      setState(() {
-        _score = null;
-        _recent = [];
-        _loading = false;
-      });
-      return;
-    }
-
-    try {
-      final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
-      final doc = await docRef.get();
-      final data = doc.data() ?? {};
-
-      // If user document doesn't have standing field at all, initialize it to 100
-      // Don't reset if it's 0 or negative - those are legitimate low scores
-      if (!data.containsKey('standing') && doc.exists) {
-        await docRef.update({'standing': 100});
-        data['standing'] = 100;
-      }
-
-      final scoreVal = data['standing'] ?? data['score'] ?? 100;
-      final score = (scoreVal is num)
-          ? scoreVal.toInt()
-          : int.tryParse('$scoreVal') ?? 100; // Default to 100 instead of 0
-
-      debugPrint('=== Community Standing Debug ===');
-      debugPrint('UID: $uid');
-      debugPrint('Document exists: ${doc.exists}');
-      debugPrint('Has standing field: ${data.containsKey('standing')}');
-      debugPrint('Raw standing value: ${data['standing']}');
-      debugPrint('Raw standing type: ${data['standing'].runtimeType}');
-      debugPrint('Score val: $scoreVal');
-      debugPrint('Parsed score: $score');
-      debugPrint('===============================');
-
-      final reportsSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('standing_reports')
-          .orderBy('time', descending: true)
-          .limit(6)
-          .get();
-
-      final recent = reportsSnap.docs.map((d) {
-        final m = d.data();
-        return {
-          'title': m['title'] ?? 'Report',
-          'delta': m['delta'] ?? 0,
-          'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        };
-      }).toList();
-
-      if (!mounted) return;
-      setState(() {
-        _score = score.clamp(0, 100);
-        _recent = recent;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _score = null;
-        _recent = [];
-        _loading = false;
-      });
     }
   }
 
