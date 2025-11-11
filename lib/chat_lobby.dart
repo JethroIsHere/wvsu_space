@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'router/app_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'utils/notification_checker.dart';
 
 class ChatLobbyScreen extends StatefulWidget {
   final String? initialMode; // 'random' or 'keyword'
@@ -292,6 +293,15 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
         const SnackBar(content: Text('Please log in to start chatting.')),
       );
       return;
+    }
+
+    // Check if user is restricted (suspended or too many warnings)
+    final isRestricted = await NotificationChecker.checkRestrictionAndNotify(
+      context,
+    );
+
+    if (isRestricted) {
+      return; // Don't proceed if user is restricted
     }
 
     // Navigate to the dedicated matching progress screen which owns

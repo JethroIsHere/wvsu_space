@@ -16,8 +16,10 @@ import '../settings.dart';
 import '../profile.dart';
 import '../community_guidelines.dart';
 import '../community_standing.dart';
+import '../standing_activity.dart';
 import '../delete_account.dart';
 import '../request_review.dart';
+import '../notifications.dart';
 
 // Optional stub for chat session
 import '../chat_session.dart';
@@ -40,9 +42,13 @@ class AppRouter {
   static const String settings = '/settings';
   static const String communityGuidelines = '/community-guidelines';
   static const String communityStanding = '/standing';
+  static const String standingActivity = '/standing/activity';
   static const String deleteAccount = '/delete-account';
   static const String profile = '/profile';
   static const String requestReview = '/request-review';
+  static const String notifications = '/notifications';
+  // Legacy route name for backwards compatibility
+  static const String warnings = '/warnings';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -71,7 +77,7 @@ class AppRouter {
         final mode = (args?['mode'] as String?) ?? 'random';
         final keywords =
             (args?['keywords'] as List?)?.whereType<String>().toList() ??
-            const <String>[];
+                const <String>[];
         return _buildRoute(
           MatchingProgressScreen(mode: mode, keywords: keywords),
           settings,
@@ -92,12 +98,17 @@ class AppRouter {
         return _buildRoute(const CommunityGuidelinesScreen(), settings);
       case AppRouter.communityStanding:
         return _buildRoute(const CommunityStandingScreen(), settings);
+      case AppRouter.standingActivity:
+        return _buildRoute(const StandingActivityScreen(), settings);
       case AppRouter.deleteAccount:
         return _buildRoute(const DeleteAccountScreen(), settings);
       case AppRouter.profile:
         return _buildRoute(const ProfileScreen(), settings);
       case AppRouter.requestReview:
         return _buildRoute(const RequestReviewScreen(), settings);
+      case AppRouter.notifications:
+      case AppRouter.warnings: // Legacy route support
+        return _buildRoute(const NotificationsScreen(), settings);
       default:
         return _buildRoute(const _NotFoundPage(), settings);
     }

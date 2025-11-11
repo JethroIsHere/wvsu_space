@@ -84,6 +84,8 @@ service cloud.firestore {
 			// Allow updating standing field only (for rating system)
 			allow update: if isSignedIn() && 
 				request.resource.data.diff(resource.data).affectedKeys().hasOnly(['standing']);
+			// Allow admins to update any field (for warnings, suspensions, etc.)
+			allow update: if isAdmin();
 			// Allow creating user doc if it only contains standing and uid fields (for rating system initialization)
 			allow create: if isSignedIn() && 
 				request.resource.data.keys().hasOnly(['standing', 'uid']) &&
@@ -94,6 +96,20 @@ service cloud.firestore {
 			match /standing_reports/{reportId} {
 				allow read: if request.auth != null && request.auth.uid == uid;
 				allow create: if isSignedIn();
+				allow update, delete: if false;
+			}
+			
+			// Warnings subcollection: only admins can write, user can read their own
+			match /warnings/{warningId} {
+				allow read: if request.auth != null && request.auth.uid == uid;
+				allow create: if isAdmin();
+				allow update, delete: if false;
+			}
+			
+			// Suspensions subcollection: only admins can write, user can read their own
+			match /suspensions/{suspensionId} {
+				allow read: if request.auth != null && request.auth.uid == uid;
+				allow create: if isAdmin();
 				allow update, delete: if false;
 			}
 		}

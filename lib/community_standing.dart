@@ -102,19 +102,22 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
         .doc(uid)
         .collection('standing_reports')
         .orderBy('time', descending: true)
-        .limit(6)
+        .limit(3)
         .snapshots()
         .listen((snapshot) {
       if (!mounted) return;
 
-      final recent = snapshot.docs.map((d) {
-        final m = d.data();
-        return {
-          'title': m['title'] ?? 'Report',
-          'delta': m['delta'] ?? 0,
-          'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        };
-      }).toList();
+      final recent = snapshot.docs
+          .map((d) {
+            final m = d.data();
+            return {
+              'title': m['title'] ?? 'Report',
+              'delta': m['delta'] ?? 0,
+              'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            };
+          })
+          .take(3)
+          .toList(); // Ensure max 3 items
 
       setState(() {
         _recent = recent;
@@ -151,6 +154,38 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
     } catch (e) {
       debugPrint('Failed to fetch nickname: $e');
       return null;
+    }
+  }
+
+  Future<bool> _hasUnacknowledgedNotifications() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    try {
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      final data = userDoc.data();
+      if (data == null) return false;
+
+      final warningCount = (data['warningCount'] as num?)?.toInt() ?? 0;
+      if (warningCount == 0) return false;
+
+      final lastWarningAt = data['lastWarningAt'] as Timestamp?;
+      final lastAcknowledgedAt =
+          data['lastWarningAcknowledgedAt'] as Timestamp?;
+
+      // Check if there are new warnings since last acknowledgment
+      if (lastAcknowledgedAt == null ||
+          (lastWarningAt != null &&
+              lastWarningAt.millisecondsSinceEpoch >
+                  lastAcknowledgedAt.millisecondsSinceEpoch)) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('Failed to check notifications: $e');
+      return false;
     }
   }
 
@@ -278,6 +313,41 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                               color: Colors.white,
                               tooltip: 'Recalculate Standing',
                               onPressed: _recalculateStanding,
+                            ),
+                            FutureBuilder<bool>(
+                              future: _hasUnacknowledgedNotifications(),
+                              builder: (context, snapshot) {
+                                final hasUnread = snapshot.data ?? false;
+                                return Stack(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                          Icons.notifications_outlined),
+                                      color: Colors.white,
+                                      tooltip: 'Notifications',
+                                      onPressed: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRouter.notifications,
+                                        );
+                                      },
+                                    ),
+                                    if (hasUnread)
+                                      Positioned(
+                                        right: 8,
+                                        top: 8,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
                             ),
                             IconButton(
                               icon: const Icon(Icons.settings),
@@ -539,6 +609,25 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                                 ),
                               );
                             }),
+                          if (!_loading && _recent.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRouter.standingActivity,
+                                  );
+                                },
+                                icon: const Icon(Icons.list_alt, size: 18),
+                                label: const Text('View Full Activity'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: BrandColors.appBlue,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'router/app_router.dart';
 // bottom nav is provided by MainShell
 import 'utils/app_colors.dart';
+import 'utils/notification_checker.dart';
 // Reverted: removed Rooms screen import
 
 class HomeScreen extends StatefulWidget {
@@ -20,21 +21,57 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _nicknameFuture = _fetchNickname();
+    // Check for notifications after a short delay to let UI settle
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        NotificationChecker.checkAndShowNotifications(context);
+      }
+    });
   }
 
   Future<String?> _fetchNickname() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final data = snap.data();
       return data?['nickname'] as String?;
     } catch (e) {
       debugPrint('Failed to fetch nickname: $e');
       return null;
+    }
+  }
+
+  Future<bool> _hasUnacknowledgedNotifications() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    try {
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      final data = userDoc.data();
+      if (data == null) return false;
+
+      final warningCount = (data['warningCount'] as num?)?.toInt() ?? 0;
+      if (warningCount == 0) return false;
+
+      final lastWarningAt = data['lastWarningAt'] as Timestamp?;
+      final lastAcknowledgedAt =
+          data['lastWarningAcknowledgedAt'] as Timestamp?;
+
+      // Check if there are new warnings since last acknowledgment
+      if (lastAcknowledgedAt == null ||
+          (lastWarningAt != null &&
+              lastWarningAt.millisecondsSinceEpoch >
+                  lastAcknowledgedAt.millisecondsSinceEpoch)) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('Failed to check notifications: $e');
+      return false;
     }
   }
 
@@ -126,6 +163,41 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Row(
                           children: [
+                            FutureBuilder<bool>(
+                              future: _hasUnacknowledgedNotifications(),
+                              builder: (context, snapshot) {
+                                final hasUnread = snapshot.data ?? false;
+                                return Stack(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                          Icons.notifications_outlined),
+                                      color: Colors.white,
+                                      tooltip: 'Notifications',
+                                      onPressed: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRouter.notifications,
+                                        );
+                                      },
+                                    ),
+                                    if (hasUnread)
+                                      Positioned(
+                                        right: 8,
+                                        top: 8,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
                             IconButton(
                               icon: const Icon(Icons.settings),
                               color: Colors.white,

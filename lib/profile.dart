@@ -20,14 +20,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadNickname();
   }
 
+  // Labels and colors consistent with CommunityStandingScreen
+  String _standingLabel(int? score) {
+    if (score == null) return 'Unknown';
+    if (score >= 85) return 'Excellent';
+    if (score >= 70) return 'Good Standing';
+    if (score >= 50) return 'At Risk';
+    return 'Restricted';
+  }
+
+  Color _badgeColor(int? score) {
+    if (score == null) return Colors.grey;
+    if (score >= 85) return BrandColors.appGreen;
+    if (score >= 70) return BrandColors.appGreen;
+    if (score >= 50) return Colors.orange;
+    return Colors.red;
+  }
+
   Future<void> _loadNickname() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final nick = (doc.data()?['nickname'] as String?)?.trim();
       if (!mounted) return;
       setState(
@@ -127,40 +142,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: () =>
                       Navigator.pushNamed(context, AppRouter.communityStanding),
                   child: _CardContainer(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Community Standing',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
+                    child:
+                        StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      stream: (() {
+                        final uid = FirebaseAuth.instance.currentUser?.uid;
+                        if (uid == null) {
+                          // Return a typed empty stream matching expected generic
+                          return Stream<
+                              DocumentSnapshot<Map<String, dynamic>>>.empty();
+                        }
+                        return FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(uid)
+                            .snapshots();
+                      })(),
+                      builder: (context, snapshot) {
+                        final data = snapshot.data?.data() ?? {};
+                        final standingRaw =
+                            data['standing'] ?? data['score'] ?? 100;
+                        final score = (standingRaw is num)
+                            ? standingRaw.toInt()
+                            : int.tryParse('$standingRaw') ?? 100;
+
+                        final clamped = score.clamp(0, 100);
+                        final label = _standingLabel(clamped);
+                        final color = _badgeColor(clamped);
+
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Community Standing',
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.check_circle,
+                                          size: 16, color: color),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          snapshot.connectionState ==
+                                                  ConnectionState.waiting
+                                              ? 'Loading…'
+                                              : '$label $clamped/100',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 84,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: clamped / 100.0,
+                                  minHeight: 10,
+                                  color: color,
+                                  backgroundColor: Colors.black12,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Good Standing 84/100',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 84,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: 0.84,
-                              minHeight: 10,
-                              color: BrandColors.appGreen,
-                              backgroundColor: Colors.black12,
                             ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),

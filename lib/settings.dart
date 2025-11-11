@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,6 +40,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setBool(_kNotificationsKey, value);
     } catch (_) {
       // Ignore failures - preference saving is best-effort local persistence.
+    }
+  }
+
+  Future<int> _getWarningCount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final data = userDoc.data();
+      return (data?['warningCount'] as num?)?.toInt() ?? 0;
+    } catch (e) {
+      return 0;
     }
   }
 
@@ -96,11 +114,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: const Text('Community Guidelines'),
-                onTap: () =>
-                    Navigator.pushNamed(context, AppRouter.communityGuidelines),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('Community Guidelines'),
+                    onTap: () => Navigator.pushNamed(
+                        context, AppRouter.communityGuidelines),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.notifications_outlined,
+                        color: Colors.orange),
+                    title: const Text('Account Notifications'),
+                    trailing: FutureBuilder<int>(
+                      future: _getWarningCount(),
+                      builder: (context, snapshot) {
+                        final count = snapshot.data ?? 0;
+                        if (count == 0) return const SizedBox.shrink();
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRouter.notifications),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),

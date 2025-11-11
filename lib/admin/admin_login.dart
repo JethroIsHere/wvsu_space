@@ -81,7 +81,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Portal'),
+        title: Text(
+          'Admin Portal',
+          style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+              ) ??
+              const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
         leading: BackButton(onPressed: () => Navigator.of(context).pop()),
       ),
       body: SafeArea(

@@ -25,7 +25,7 @@ class AdminSettingsScreen extends StatelessWidget {
           style: theme.textTheme.titleLarge?.copyWith(
             color: Colors.black87,
             fontWeight: FontWeight.w700,
-            fontSize: 22,
+            fontSize: 20,
           ),
         ),
       ),
