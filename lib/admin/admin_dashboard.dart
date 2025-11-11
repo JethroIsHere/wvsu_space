@@ -69,7 +69,9 @@ class AdminDashboardScreen extends StatelessWidget {
                           children: [
                             Text(
                               'Admin Dashboard',
-                              style: Theme.of(context).textTheme.titleLarge
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
                                   ?.copyWith(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 26,
@@ -77,7 +79,9 @@ class AdminDashboardScreen extends StatelessWidget {
                             ),
                             Text(
                               _fmtNow(),
-                              style: Theme.of(context).textTheme.bodySmall
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
                                   ?.copyWith(color: Colors.black),
                             ),
                           ],
@@ -163,12 +167,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         onTap: () => _notImplemented(context),
                       ),
                       const SizedBox(height: 12),
-                      _MetricTile(
-                        label: 'Community Health',
-                        valueText: '4.2 /5.0',
-                        color: Colors.green,
-                        subtitle: 'Average attitude score',
-                      ),
+                      const _CommunityHealthTile(),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -253,9 +252,8 @@ class AdminDashboardScreen extends StatelessWidget {
                     _buildClaimRow(
                       'Admin Access',
                       claims['admin'] == true ? '✓ Granted' : '✗ None',
-                      valueColor: claims['admin'] == true
-                          ? Colors.green
-                          : Colors.grey,
+                      valueColor:
+                          claims['admin'] == true ? Colors.green : Colors.grey,
                     ),
                   ]),
                   const Divider(height: 24),
@@ -310,9 +308,9 @@ class AdminDashboardScreen extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
             ),
           ],
         ),
@@ -363,9 +361,8 @@ class AdminDashboardScreen extends StatelessWidget {
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'N/A';
     try {
-      final seconds = timestamp is int
-          ? timestamp
-          : int.tryParse(timestamp.toString());
+      final seconds =
+          timestamp is int ? timestamp : int.tryParse(timestamp.toString());
       if (seconds == null) return 'Invalid';
 
       final date = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
@@ -409,9 +406,8 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 
   String _formatTime(DateTime date) {
-    final hour = date.hour > 12
-        ? date.hour - 12
-        : (date.hour == 0 ? 12 : date.hour);
+    final hour =
+        date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
     final minute = date.minute.toString().padLeft(2, '0');
     final period = date.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $period';
@@ -462,6 +458,60 @@ class _ReportsTile extends StatelessWidget {
           title: 'Review Reports',
           subtitle: '$pending pending',
           onTap: () => Navigator.pushNamed(context, AppRouter.adminReports),
+        );
+      },
+    );
+  }
+}
+
+class _CommunityHealthTile extends StatelessWidget {
+  const _CommunityHealthTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+      builder: (context, snapshot) {
+        double avgStanding = 0.0;
+        int userCount = 0;
+
+        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+          double totalStanding = 0.0;
+          userCount = 0;
+
+          for (final doc in snapshot.data!.docs) {
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data != null && data.containsKey('standing')) {
+              final standing = data['standing'];
+              final standingValue = standing is num ? standing.toDouble() : 0.0;
+              totalStanding += standingValue;
+              userCount++;
+            }
+          }
+
+          if (userCount > 0) {
+            avgStanding = totalStanding / userCount;
+          }
+        }
+
+        // Format to 1 decimal place
+        final valueText = '${avgStanding.toStringAsFixed(1)} /100';
+
+        // Color based on health: green if >= 80, yellow if >= 60, orange if >= 40, red otherwise
+        Color healthColor = Colors.green;
+        if (avgStanding < 40) {
+          healthColor = Colors.red;
+        } else if (avgStanding < 60) {
+          healthColor = Colors.orange;
+        } else if (avgStanding < 80) {
+          healthColor = Colors.yellow.shade700;
+        }
+
+        return _MetricTile(
+          label: 'Community Health',
+          valueText: valueText,
+          color: healthColor,
+          subtitle: 'Average standing ($userCount users)',
         );
       },
     );
