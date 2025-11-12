@@ -202,6 +202,8 @@ class _ActivityTrackerState extends State<_ActivityTracker>
   }
 
   Future<void> _touch() async {
+    // Skip if Firebase hasn't been initialized (e.g., widget tests)
+    if (Firebase.apps.isEmpty) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
