@@ -52,7 +52,7 @@ class _StandingActivityScreenState extends State<StandingActivityScreen> {
       final activities = snapshot.docs.map((d) {
         final m = d.data();
         return {
-          'title': m['title'] ?? 'Report',
+          'title': _displayActivityTitle(m),
           'delta': m['delta'] ?? 0,
           'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
         };
@@ -69,6 +69,18 @@ class _StandingActivityScreenState extends State<StandingActivityScreen> {
         _loading = false;
       });
     });
+  }
+
+  String _displayActivityTitle(Map<String, dynamic> m) {
+    final type = m['type'] as String?;
+    final title = (m['title'] as String?) ?? '';
+    if (type == 'chat_rating') {
+      return 'Conversation feedback received';
+    }
+    if (title.toLowerCase().startsWith('chat rating')) {
+      return 'Conversation feedback received';
+    }
+    return title.isNotEmpty ? title : 'Activity';
   }
 
   @override

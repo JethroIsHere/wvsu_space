@@ -239,11 +239,15 @@ class _RateConversationDialogState extends State<RateConversationDialog> {
 
         // 3. Add standing report (after transaction completes)
         await userRef.collection('standing_reports').add({
-          'title': 'Chat Rating: ${_label(_selectedRating)}',
+          // Store a generic sanitized title (no explicit qualitative label)
+          'title': 'Conversation feedback received',
           'delta': delta,
           'type': 'chat_rating',
           'time': FieldValue.serverTimestamp(),
           'sessionId': widget.sessionId,
+          // Additional fields retained for internal analytics / future use
+          'rating': _selectedRating,
+          'ratingLabel': _label(_selectedRating),
         });
       }
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'router/app_router.dart';
 
 // --- Define your custom colors class ---
@@ -147,6 +150,8 @@ class MyApp extends StatelessWidget {
           ),
         ],
       ),
+      // Wrap all routes with a global activity tracker so any screen usage updates lastActiveAt.
+      builder: (context, child) => _ActivityTracker(child: child),
       // Centralized router
       initialRoute: AppRouter.gettingStarted,
       onGenerateRoute: AppRouter.onGenerateRoute,
@@ -158,3 +163,62 @@ class MyApp extends StatelessWidget {
 // class MyHomePage extends StatefulWidget { ... }
 // class _MyHomePageState extends State<MyHomePage> { ... }
 // -----------------------------------------------------------
+
+/// Global lifecycle observer that writes lastActiveAt for the signed-in user
+/// when the app starts, resumes, and periodically while foregrounded.
+class _ActivityTracker extends StatefulWidget {
+  final Widget? child;
+  const _ActivityTracker({this.child});
+
+  @override
+  State<_ActivityTracker> createState() => _ActivityTrackerState();
+}
+
+class _ActivityTrackerState extends State<_ActivityTracker>
+    with WidgetsBindingObserver {
+  Timer? _heartbeat;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _touch();
+    // Periodic heartbeat (every 5 minutes) while app is running
+    _heartbeat = Timer.periodic(const Duration(minutes: 5), (_) => _touch());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _heartbeat?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _touch();
+    }
+  }
+
+  Future<void> _touch() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).set(
+        {
+          'lastActiveAt': FieldValue.serverTimestamp(),
+          // Maintain legacy field for compatibility
+          'lastActive': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      // Avoid spamming logs; keep this quiet in release builds
+      // debugPrint('Failed to update lastActiveAt: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child ?? const SizedBox.shrink();
+}

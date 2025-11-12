@@ -111,7 +111,7 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
           .map((d) {
             final m = d.data();
             return {
-              'title': m['title'] ?? 'Report',
+              'title': _displayActivityTitle(m),
               'delta': m['delta'] ?? 0,
               'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
             };
@@ -125,6 +125,28 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
     }, onError: (error) {
       debugPrint('Error listening to standing reports: $error');
     });
+  }
+
+  String _displayActivityTitle(Map<String, dynamic> m) {
+    final type = m['type'] as String?;
+    final title = (m['title'] as String?) ?? '';
+    // Primary: sanitize by type
+    if (type == 'chat_rating') {
+      return 'Conversation feedback received';
+    }
+    // Fallback: sanitize by title pattern for legacy entries
+    if (title.toLowerCase().startsWith('chat rating')) {
+      return 'Conversation feedback received';
+    }
+    return title.isNotEmpty ? title : 'Activity';
+  }
+
+  String _displayTitleString(dynamic title) {
+    final t = (title as String?) ?? '';
+    if (t.toLowerCase().startsWith('chat rating')) {
+      return 'Conversation feedback received';
+    }
+    return t.isNotEmpty ? t : 'Activity';
   }
 
   String _standingLabel(int? score) {
@@ -570,6 +592,7 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                             ..._recent.map((r) {
                               final dt = r['time'] as DateTime;
                               final delta = r['delta'] ?? 0;
+                              final titleStr = _displayTitleString(r['title']);
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 6.0,
@@ -584,7 +607,7 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            r['title'] ?? 'Activity',
+                                            titleStr,
                                             style: theme.textTheme.bodyLarge,
                                           ),
                                           const SizedBox(height: 2),

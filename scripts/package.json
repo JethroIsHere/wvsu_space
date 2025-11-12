@@ -5,7 +5,11 @@
   "main": "backfill_reported_nicknames.js",
   "scripts": {
     "backfill:dry": "node backfill_reported_nicknames.js --dry-run",
-    "backfill": "node backfill_reported_nicknames.js"
+    "backfill": "node backfill_reported_nicknames.js",
+    "backfill:ratings:dry": "node backfill_chat_rating_titles.js --dry-run",
+  "backfill:ratings": "node backfill_chat_rating_titles.js",
+    "backfill:lastActive:dry": "node backfill_last_active.js --dry-run",
+    "backfill:lastActive": "node backfill_last_active.js"
   },
   "dependencies": {
     "firebase-admin": "^11.11.0",

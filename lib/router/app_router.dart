@@ -12,6 +12,7 @@ import '../admin/reports_admin.dart';
 import '../admin/admin_login.dart';
 import '../admin/admin_dashboard.dart';
 import '../admin/admin_settings.dart';
+import '../admin/user_management.dart';
 import '../settings.dart';
 import '../profile.dart';
 import '../community_guidelines.dart';
@@ -39,6 +40,7 @@ class AppRouter {
   static const String adminLogin = '/admin/login';
   static const String adminDashboard = '/admin/dashboard';
   static const String adminSettings = '/admin/settings';
+  static const String adminUserManagement = '/admin/users';
   static const String settings = '/settings';
   static const String communityGuidelines = '/community-guidelines';
   static const String communityStanding = '/standing';
@@ -90,6 +92,8 @@ class AppRouter {
         return _buildRoute(const AdminDashboardScreen(), settings);
       case adminSettings:
         return _buildRoute(const AdminSettingsScreen(), settings);
+      case adminUserManagement:
+        return _buildRoute(const UserManagementScreen(), settings);
       case adminReports:
         return _buildRoute(const ReportsAdminScreen(), settings);
       case AppRouter.settings:

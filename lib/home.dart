@@ -14,19 +14,49 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final Future<String?> _nicknameFuture;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _nicknameFuture = _fetchNickname();
+    _updateLastActive(); // Track user activity
     // Check for notifications after a short delay to let UI settle
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         NotificationChecker.checkAndShowNotifications(context);
       }
     });
+  }
+
+  Future<void> _updateLastActive() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'lastActiveAt': FieldValue.serverTimestamp(),
+        // Maintain legacy field for compatibility
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Failed to update lastActive: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Update last active when app returns to foreground
+      _updateLastActive();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<String?> _fetchNickname() async {

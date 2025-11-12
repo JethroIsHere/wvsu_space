@@ -156,7 +156,10 @@ class AdminDashboardScreen extends StatelessWidget {
                         color: Colors.blue,
                         title: 'User Management',
                         subtitle: 'Search & manage users',
-                        onTap: () => _notImplemented(context),
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRouter.adminUserManagement,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       _NavTile(

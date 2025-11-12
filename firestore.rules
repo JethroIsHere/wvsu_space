@@ -84,6 +84,11 @@ service cloud.firestore {
 			// Allow updating standing field only (for rating system)
 			allow update: if isSignedIn() && 
 				request.resource.data.diff(resource.data).affectedKeys().hasOnly(['standing']);
+			// Allow users to update ONLY their own activity tracking fields
+			// Accept either lastActiveAt alone or both lastActiveAt + legacy lastActive
+			allow update: if isSignedIn() &&
+				request.auth.uid == uid &&
+				request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt', 'lastActive']);
 			// Allow admins to update any field (for warnings, suspensions, etc.)
 			allow update: if isAdmin();
 			// Allow creating user doc if it only contains standing and uid fields (for rating system initialization)
@@ -102,6 +107,7 @@ service cloud.firestore {
 			// Warnings subcollection: only admins can write, user can read their own
 			match /warnings/{warningId} {
 				allow read: if request.auth != null && request.auth.uid == uid;
+				// Allow admins to create warnings and score adjustment notifications
 				allow create: if isAdmin();
 				allow update, delete: if false;
 			}
