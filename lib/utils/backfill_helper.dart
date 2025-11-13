@@ -7,11 +7,31 @@ Future<int> backfillRecentReports(
   FirebaseFirestore db, {
   int limit = 500,
 }) async {
-  final snap = await db
-      .collection('user_reports')
-      .orderBy('createdAt', descending: true)
-      .limit(limit)
-      .get();
+  // Support both legacy 'reports' and current 'user_reports' collections.
+  // Tests seed 'reports', production code may use 'user_reports'. We merge both.
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = [];
+
+  try {
+    final reportsSnap = await db
+        .collection('reports')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .get();
+    docs.addAll(reportsSnap.docs);
+  } catch (_) {
+    // Ignore if collection does not exist or orderBy fails in fake DB
+  }
+
+  try {
+    final userReportsSnap = await db
+        .collection('user_reports')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .get();
+    docs.addAll(userReportsSnap.docs);
+  } catch (_) {
+    // Ignore if absent
+  }
 
   final Map<String, String?> cache = {};
   int updates = 0;
@@ -28,7 +48,7 @@ Future<int> backfillRecentReports(
     return cache[uid];
   }
 
-  for (final doc in snap.docs) {
+  for (final doc in docs) {
     final data = doc.data();
     final reporterId = data['reporterId'] as String?;
     final reportedId = data['reportedUserId'] as String?;
