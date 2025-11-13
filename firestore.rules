@@ -4,6 +4,15 @@ service cloud.firestore {
 		function isSignedIn() { return request.auth != null; }
 		function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
 
+		// Collection group queries for admin moderation logs
+		match /{path=**}/warnings/{warningId} {
+			allow read: if isAdmin();
+		}
+		
+		match /{path=**}/standing_reports/{reportId} {
+			allow read: if isAdmin();
+		}
+
 		// Matchmaking queue: each user owns a doc with id == uid
 				match /matchQueue/{uid} {
 					// Anyone signed in can read to discover potential partners
@@ -67,6 +76,31 @@ service cloud.firestore {
 			allow delete: if isAdmin();
 		}
 
+		// User-submitted reports (v2 path to avoid legacy triggers)
+		match /user_reports/{id} {
+			allow create: if isSignedIn();
+			allow read: if isAdmin();
+			allow update: if isAdmin();
+			allow delete: if isAdmin();
+		}
+
+		// Admin review requests (appeals): users create; only admins can read/update
+		match /admin_review_requests/{id} {
+			allow create: if isSignedIn();
+			allow read: if isAdmin();
+			allow update: if isAdmin();
+			allow delete: if false;
+		}
+
+		// Admin registry for incrementing labels
+		match /admins/{adminId} {
+			allow read, write: if isAdmin();
+		}
+
+		match /admins_meta/{docId} {
+			allow read, write: if isAdmin();
+		}
+
 		// Ratings: allow any signed-in user to create a rating document.
 		// Backend Cloud Function will process standing changes. No client reads needed.
 		match /ratings/{id} {
@@ -106,7 +140,7 @@ service cloud.firestore {
 			
 			// Warnings subcollection: only admins can write, user can read their own
 			match /warnings/{warningId} {
-				allow read: if request.auth != null && request.auth.uid == uid;
+				allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
 				// Allow admins to create warnings and score adjustment notifications
 				allow create: if isAdmin();
 				allow update, delete: if false;

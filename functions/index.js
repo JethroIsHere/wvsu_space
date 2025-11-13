@@ -326,36 +326,18 @@ exports.onRatingCreate = functions
     });
   });
 
-// When a report is created, penalize the reported user according to reason.
+// When a report is created, mark it pending for admin review.
 exports.onReportCreate = functions
   .region('us-central1')
   .firestore.document('reports/{reportId}')
   .onCreate(async (snap, context) => {
     const data = snap.data() || {};
-    const reportedUserId = data.reportedUserId || data.reportedUid; // support both keys
-    const reason = (data.reason || '').toString();
-    if (!reportedUserId) return; // nothing to do
-
-    // Penalties: Harassment -10, Inappropriate Content -8, Spam -4, Other -2
-    const reasonKey = reason.toLowerCase();
-    let delta = -2; // default
-    if (reasonKey.includes('harass')) delta = -10;
-    else if (reasonKey.includes('inappropriate')) delta = -8;
-    else if (reasonKey.includes('spam')) delta = -4;
-
-    const userRef = db.collection('users').doc(reportedUserId);
-    await db.runTransaction(async (tx) => {
-      const userSnap = await tx.get(userRef);
-      const current = (userSnap.exists && userSnap.data().standing) || 100;
-      const newStanding = Math.max(0, Math.min(100, Number(current) + delta));
-      tx.set(userRef, { standing: newStanding }, { merge: true });
-      tx.set(userRef.collection('standing_reports').doc(), {
-        title: `Report: ${reason || 'Other'}`,
-        delta,
-        type: 'report',
-        time: admin.firestore.FieldValue.serverTimestamp(),
-        sourceReportId: snap.id,
-        sessionId: data.sessionId || null,
-      });
-    });
+    // If no status set by client, set to pending to be processed by admins.
+    if (!data.status) {
+      try {
+        await snap.ref.set({ status: 'pending' }, { merge: true });
+      } catch (e) {
+        console.warn('Failed to set report status to pending', e);
+      }
+    }
   });

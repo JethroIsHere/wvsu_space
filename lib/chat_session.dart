@@ -396,22 +396,11 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
       // Reported user's nickname is admin-only data; it will be populated by
       // admin backfill or a server-side job. We keep reportedNickname null here.
 
-      // Calculate penalty based on report reason
-      int penalty = -2; // default for "Other"
-      final reasonLower = selected?.toLowerCase() ?? '';
-      if (reasonLower.contains('harass')) {
-        penalty = -10;
-      } else if (reasonLower.contains('inappropriate')) {
-        penalty = -8;
-      } else if (reasonLower.contains('spam')) {
-        penalty = -4;
-      }
-
       debugPrint(
-          'Report submission - Reporter: $uid, Reported: $reportedUid, Reason: $selected, Penalty: $penalty');
+          'Report submission - Reporter: $uid, Reported: $reportedUid, Reason: $selected');
 
       // 1. Create the report
-      await FirebaseFirestore.instance.collection('reports').add({
+      await FirebaseFirestore.instance.collection('user_reports').add({
         'sessionId': sessionId,
         'reporterId': uid,
         if (reportedUid != null) 'reportedUserId': reportedUid,
@@ -421,47 +410,11 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
         'reason': selected,
         'details': controller.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
+        // Defer any standing changes to admin review
+        'status': 'pending',
       });
 
-      // 2. Update reported user's standing using transaction if we have their UID
-      if (reportedUid != null) {
-        final reportedUserRef =
-            FirebaseFirestore.instance.collection('users').doc(reportedUid);
-
-        await FirebaseFirestore.instance.runTransaction((transaction) async {
-          final userDoc = await transaction.get(reportedUserRef);
-
-          if (!userDoc.exists) {
-            // Create user document with initial standing + penalty
-            debugPrint(
-                'Creating new user doc for $reportedUid with standing: ${100 + penalty}');
-            transaction.set(reportedUserRef, {
-              'standing': 100 + penalty,
-              'uid': reportedUid,
-            });
-          } else {
-            // Update existing standing
-            final currentStanding = userDoc.data()?['standing'] ?? 100;
-            final newStanding = currentStanding + penalty;
-            debugPrint(
-                'Updating standing for $reportedUid: $currentStanding -> $newStanding');
-            transaction.update(reportedUserRef, {
-              'standing': newStanding,
-            });
-          }
-        });
-
-        debugPrint('Report penalty applied successfully');
-
-        // 3. Add standing report
-        await reportedUserRef.collection('standing_reports').add({
-          'title': 'Report: ${selected ?? "Other"}',
-          'delta': penalty,
-          'type': 'report',
-          'time': FieldValue.serverTimestamp(),
-          'sessionId': sessionId,
-        });
-      }
+      // No automatic standing penalties here; admins decide during review.
 
       // End the chat as part of reporting
       await _endChat(reason: 'reported');

@@ -513,7 +513,7 @@ class _UserProfileCardState extends State<_UserProfileCard> {
     try {
       final uid = _currentUserData['uid'] as String;
       final reportsQuery = await FirebaseFirestore.instance
-          .collection('reports')
+          .collection('user_reports')
           .where('reportedUserId', isEqualTo: uid)
           .get();
 

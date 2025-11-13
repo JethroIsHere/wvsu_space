@@ -138,6 +138,16 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
     if (title.toLowerCase().startsWith('chat rating')) {
       return 'Conversation feedback received';
     }
+    // Abstract report-related activity
+    if (type != null && type.contains('report')) {
+      return 'Report reviewed';
+    }
+    final lower = title.toLowerCase();
+    if (lower.startsWith('report') ||
+        lower.startsWith('user report') ||
+        lower.startsWith('false report')) {
+      return 'Report reviewed';
+    }
     return title.isNotEmpty ? title : 'Activity';
   }
 
@@ -145,6 +155,12 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
     final t = (title as String?) ?? '';
     if (t.toLowerCase().startsWith('chat rating')) {
       return 'Conversation feedback received';
+    }
+    final lower = t.toLowerCase();
+    if (lower.startsWith('report') ||
+        lower.startsWith('user report') ||
+        lower.startsWith('false report')) {
+      return 'Report reviewed';
     }
     return t.isNotEmpty ? t : 'Activity';
   }

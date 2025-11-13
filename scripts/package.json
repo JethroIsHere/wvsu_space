@@ -9,7 +9,9 @@
     "backfill:ratings:dry": "node backfill_chat_rating_titles.js --dry-run",
   "backfill:ratings": "node backfill_chat_rating_titles.js",
     "backfill:lastActive:dry": "node backfill_last_active.js --dry-run",
-    "backfill:lastActive": "node backfill_last_active.js"
+    "backfill:lastActive": "node backfill_last_active.js",
+    "revert:reports:dry": "node revert_report_penalties.js --dry-run",
+    "revert:reports": "node revert_report_penalties.js --confirm"
   },
   "dependencies": {
     "firebase-admin": "^11.11.0",

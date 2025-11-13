@@ -8,7 +8,7 @@ Future<int> backfillRecentReports(
   int limit = 500,
 }) async {
   final snap = await db
-      .collection('reports')
+      .collection('user_reports')
       .orderBy('createdAt', descending: true)
       .limit(limit)
       .get();

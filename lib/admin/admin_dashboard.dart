@@ -167,7 +167,10 @@ class AdminDashboardScreen extends StatelessWidget {
                         color: Colors.orange,
                         title: 'Logs & Appeals',
                         subtitle: 'View mod actions & appeals',
-                        onTap: () => _notImplemented(context),
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRouter.adminLogsAppeals,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       const _CommunityHealthTile(),
@@ -427,11 +430,7 @@ class AdminDashboardScreen extends StatelessWidget {
     return issuerStr;
   }
 
-  static void _notImplemented(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Coming soon')));
-  }
+  // _notImplemented helper removed after adding Logs & Appeals route
 }
 
 String _fmtNow() {
@@ -447,8 +446,8 @@ class _ReportsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final query = FirebaseFirestore.instance
-        .collection('reports')
-        .where('status', isEqualTo: 'open');
+        .collection('user_reports')
+        .where('status', isEqualTo: 'pending');
 
     return StreamBuilder<QuerySnapshot>(
       stream: query.snapshots(),

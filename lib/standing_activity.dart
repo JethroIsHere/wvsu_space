@@ -80,6 +80,16 @@ class _StandingActivityScreenState extends State<StandingActivityScreen> {
     if (title.toLowerCase().startsWith('chat rating')) {
       return 'Conversation feedback received';
     }
+    // Abstract any report-related activity
+    if (type != null && (type.contains('report'))) {
+      return 'Report reviewed';
+    }
+    final lower = title.toLowerCase();
+    if (lower.startsWith('report') ||
+        lower.startsWith('user report') ||
+        lower.startsWith('false report')) {
+      return 'Report reviewed';
+    }
     return title.isNotEmpty ? title : 'Activity';
   }
 

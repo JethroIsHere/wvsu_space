@@ -12,7 +12,7 @@ class ReportsAdminScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final query = FirebaseFirestore.instance
-        .collection('reports')
+        .collection('user_reports')
         .orderBy('createdAt', descending: true)
         .limit(100);
 
@@ -302,51 +302,57 @@ class _ReportCardState extends State<_ReportCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ActionBtn(
-                          label: 'Warn User',
-                          color: const Color(0xFFF9C84B), // yellow
-                          textColor: Colors.black87,
-                          onPressed: () =>
-                              _applyAction(context, 'warn', 'reviewed'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionBtn(
-                          label: 'Adjust Score',
-                          color: const Color(0xFF7B61FF), // purple
-                          onPressed: () =>
-                              _applyAction(context, 'adjust_score', 'actioned'),
-                        ),
-                      ),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double gap = 10;
+                      final double itemWidth = (constraints.maxWidth - gap) / 2;
+                      return Wrap(
+                        spacing: gap,
+                        runSpacing: gap,
+                        children: [
+                          SizedBox(
+                            width: itemWidth,
+                            child: _ActionBtn(
+                              label: 'Warn User',
+                              color: const Color(0xFFF9C84B), // yellow
+                              textColor: Colors.black87,
+                              onPressed: () =>
+                                  _applyAction(context, 'warn', 'reviewed'),
+                            ),
+                          ),
+                          SizedBox(
+                            width: itemWidth,
+                            child: _ActionBtn(
+                              label: 'Adjust Score',
+                              color: const Color(0xFF7B61FF), // purple
+                              onPressed: () => _applyAction(
+                                  context, 'adjust_score', 'actioned'),
+                            ),
+                          ),
+                          SizedBox(
+                            width: itemWidth,
+                            child: _ActionBtn(
+                              label: 'Suspend',
+                              color: const Color(0xFFFF4D4F), // red
+                              onPressed: () =>
+                                  _applyAction(context, 'suspend', 'actioned'),
+                            ),
+                          ),
+                          SizedBox(
+                            width: itemWidth,
+                            child: _ActionBtn(
+                              label: 'Dismiss',
+                              color: Colors.grey.shade400,
+                              textColor: Colors.black87,
+                              onPressed: () =>
+                                  _applyAction(context, 'dismiss', 'reviewed'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ActionBtn(
-                          label: 'Suspend',
-                          color: const Color(0xFFFF4D4F), // red
-                          onPressed: () =>
-                              _applyAction(context, 'suspend', 'actioned'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionBtn(
-                          label: 'Dismiss',
-                          color: Colors.grey.shade400,
-                          textColor: Colors.black87,
-                          onPressed: () =>
-                              _applyAction(context, 'dismiss', 'reviewed'),
-                        ),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 12),
                   const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.center,
@@ -431,12 +437,13 @@ class _ReportCardState extends State<_ReportCard> {
             'createdAt': FieldValue.serverTimestamp(),
             // Admin tracking fields (not shown to user)
             'reportId': widget.docId,
-            'issuedBy': FirebaseAuth.instance.currentUser?.uid,
+            'adminUid': FirebaseAuth.instance.currentUser?.uid,
+            'type': 'content_warning',
           });
 
           // Update report status
           transaction.set(
-            db.collection('reports').doc(widget.docId),
+            db.collection('user_reports').doc(widget.docId),
             {
               'status': status,
               'action': action,
@@ -448,7 +455,7 @@ class _ReportCardState extends State<_ReportCard> {
         });
       } else if (action == 'dismiss') {
         // For dismiss, simply delete the report without affecting the user
-        await db.collection('reports').doc(widget.docId).delete();
+        await db.collection('user_reports').doc(widget.docId).delete();
       }
 
       if (!mounted) return;
@@ -562,7 +569,7 @@ class _ReportCardState extends State<_ReportCard> {
 
         // Update report
         transaction.set(
-          db.collection('reports').doc(widget.docId),
+          db.collection('user_reports').doc(widget.docId),
           {
             'status': status,
             'action': 'adjust_score',
@@ -731,13 +738,13 @@ class _ReportCardState extends State<_ReportCard> {
           'duration': days > 0 ? '$days days' : 'permanent',
           'suspendedAt': FieldValue.serverTimestamp(),
           'suspendedUntil': suspendedUntil,
-          'issuedBy': FirebaseAuth.instance.currentUser?.uid,
+          'adminUid': FirebaseAuth.instance.currentUser?.uid,
         },
       );
 
       // Update report
       batch.set(
-        db.collection('reports').doc(widget.docId),
+        db.collection('user_reports').doc(widget.docId),
         {
           'status': status,
           'action': 'suspend',
@@ -860,9 +867,23 @@ class _ActionBtn extends StatelessWidget {
           foregroundColor: textColor ?? Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           elevation: 0,
+          padding: EdgeInsets.zero,
+          alignment: Alignment.center,
         ),
         onPressed: onPressed,
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -897,7 +918,7 @@ Future<void> _createTestReport(BuildContext context) async {
     final userDoc = await db.collection('users').doc(user.uid).get();
     final nick = (userDoc.data()?['nickname'] as String?)?.trim();
 
-    await db.collection('reports').add({
+    await db.collection('user_reports').add({
       'sessionId': 'TEST',
       'reporterId': user.uid,
       'reportedUserId': user.uid,
@@ -966,7 +987,7 @@ Future<void> _deleteAllReports(BuildContext context) async {
   int deleted = 0;
   try {
     while (true) {
-      final snap = await db.collection('reports').limit(500).get();
+      final snap = await db.collection('user_reports').limit(500).get();
       if (snap.docs.isEmpty) break;
       final batch = db.batch();
       for (final d in snap.docs) {
