@@ -562,6 +562,9 @@ class _ReportCardState extends State<_ReportCard> {
             'reason': 'Admin adjustment from report ${widget.docId}',
             'reportReason': widget.tag,
             'details': widget.details,
+            // Provide both `time` (used by moderation logs) and
+            // `createdAt` for backward compatibility.
+            'time': FieldValue.serverTimestamp(),
             'createdAt': FieldValue.serverTimestamp(),
             'adjustedBy': FirebaseAuth.instance.currentUser?.uid,
           },

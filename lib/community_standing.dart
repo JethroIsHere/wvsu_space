@@ -69,10 +69,14 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
         return; // Will trigger another snapshot with updated value
       }
 
-      final scoreVal = data['standing'] ?? data['score'] ?? 100;
-      final score = (scoreVal is num)
-          ? scoreVal.toInt()
-          : int.tryParse('$scoreVal') ?? 100;
+      int score = 100;
+      if (data['standing'] is num) {
+        score = (data['standing'] as num).toInt();
+      } else if (data['standing'] is String) {
+        score = int.tryParse(data['standing']) ?? 100;
+      } else if (data['score'] is num) {
+        score = (data['score'] as num).toInt();
+      }
 
       debugPrint('=== Community Standing Real-time Update ===');
       debugPrint('UID: $uid');
@@ -104,21 +108,36 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
         .orderBy('time', descending: true)
         .limit(3)
         .snapshots()
-        .listen((snapshot) {
+        .listen((snapshot) async {
       if (!mounted) return;
-
-      final recent = snapshot.docs
-          .map((d) {
-            final m = d.data();
-            return {
-              'title': _displayActivityTitle(m),
-              'delta': m['delta'] ?? 0,
-              'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
-            };
-          })
-          .take(3)
-          .toList(); // Ensure max 3 items
-
+      List<Map<String, dynamic>> recent = [];
+      if (snapshot.docs.isNotEmpty) {
+        recent = snapshot.docs
+            .map((d) {
+              final m = d.data();
+              return {
+                'title': _displayActivityTitle(m),
+                'delta': m['delta'] ?? 0,
+                'time': (m['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              };
+            })
+            .take(3)
+            .toList();
+      } else {
+        // Fallback: show last activity from user doc if available
+        final userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        final lastActive = userDoc.data()?['lastActiveAt'] as Timestamp?;
+        if (lastActive != null) {
+          recent = [
+            {
+              'title': 'Last active',
+              'delta': 0,
+              'time': lastActive.toDate(),
+            }
+          ];
+        }
+      }
       setState(() {
         _recent = recent;
       });
@@ -237,12 +256,15 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
       // Get all standing reports
       final reportsSnapshot = await docRef
           .collection('standing_reports')
-          .orderBy('time', descending: false)
+          .orderBy('time', descending: true)
           .get();
+
+      // Reverse the results to process oldest first
+      final docs = reportsSnapshot.docs.reversed;
 
       // Calculate standing from scratch (start at 100)
       int calculatedStanding = 100;
-      for (var doc in reportsSnapshot.docs) {
+      for (var doc in docs) {
         final delta = (doc.data()['delta'] as num?)?.toInt() ?? 0;
         calculatedStanding += delta;
         debugPrint(
@@ -252,7 +274,8 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
       debugPrint('Recalculated standing: $calculatedStanding');
 
       // Update the standing in the database (real-time listener will update UI automatically)
-      await docRef.update({'standing': calculatedStanding});
+      await docRef
+          .set({'standing': calculatedStanding}, SetOptions(merge: true));
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

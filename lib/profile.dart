@@ -158,12 +158,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       })(),
                       builder: (context, snapshot) {
                         final data = snapshot.data?.data() ?? {};
-                        final standingRaw =
-                            data['standing'] ?? data['score'] ?? 100;
-                        final score = (standingRaw is num)
-                            ? standingRaw.toInt()
-                            : int.tryParse('$standingRaw') ?? 100;
-
+                        int score = 100;
+                        if (data['standing'] is num) {
+                          score = (data['standing'] as num).toInt();
+                        } else if (data['standing'] is String) {
+                          score = int.tryParse(data['standing']) ?? 100;
+                        } else if (data['score'] is num) {
+                          score = (data['score'] as num).toInt();
+                        }
                         final clamped = score.clamp(0, 100);
                         final label = _standingLabel(clamped);
                         final color = _badgeColor(clamped);

@@ -10,6 +10,24 @@ class LogsAndAppealsScreen extends StatefulWidget {
   State<LogsAndAppealsScreen> createState() => _LogsAndAppealsScreenState();
 }
 
+// Top-level helper to update appeal status with a serverTimestamp fallback for web.
+Future<void> _updateAppealStatus(String appealId, bool approve) async {
+  final ref = FirebaseFirestore.instance
+      .collection('admin_review_requests')
+      .doc(appealId);
+  try {
+    await ref.update({
+      'status': approve ? 'approved' : 'rejected',
+      'decidedAt': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    await ref.update({
+      'status': approve ? 'approved' : 'rejected',
+      'decidedAt': Timestamp.now(),
+    });
+  }
+}
+
 class _LogsAndAppealsScreenState extends State<LogsAndAppealsScreen> {
   bool _isAdmin = false;
   bool _loadingAdmin = true;
@@ -110,20 +128,22 @@ class _AdminLogsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Query standing_reports and filter client-side to avoid composite index
+    // Merge standing_reports (collectionGroup) with admin_review_requests so appeals
+    // also appear in the moderation logs. Use nested StreamBuilders and client-side
+    // merging/sorting to avoid composite index requirements.
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collectionGroup('standing_reports')
           .orderBy('time', descending: true)
           .limit(100)
           .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
+      builder: (context, standingSnap) {
+        if (standingSnap.hasError) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'Error loading logs: ${snapshot.error}',
+                'Error loading logs: ${standingSnap.error}',
                 style: TextStyle(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
@@ -131,161 +151,392 @@ class _AdminLogsTab extends StatelessWidget {
           );
         }
 
-        if (!snapshot.hasData) {
+        if (!standingSnap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // Filter client-side for admin action types
-        final allDocs = snapshot.data?.docs ?? [];
-        final adminActionTypes = {
-          'content_warning',
-          'admin_adjustment',
-          'score_adjustment',
-          'appeal_adjustment',
-          'appeal_decision'
-        };
-        final docs = allDocs
-            .where((doc) {
-              final data = doc.data();
-              final type = data['type'] as String?;
-              return type != null && adminActionTypes.contains(type);
-            })
-            .take(50)
-            .toList();
-
-        if (docs.isEmpty) {
-          return _EmptyState(
-            icon: Icons.receipt_long,
-            title: 'No moderator actions',
-            message: 'Admin-issued notifications will appear here.',
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final d = docs[index];
-            final data = d.data() as Map<String, dynamic>? ?? {};
-            final time = data['time'] as Timestamp?;
-            final type = (data['type'] as String?) ?? 'action';
-            final delta = (data['delta'] as num?)?.toInt();
-            final reason = (data['reason'] as String?) ?? '';
-            final userId = d.reference.parent.parent?.id ?? 'unknown';
-
-            // Determine category from type
-            String category;
-            switch (type) {
-              case 'content_warning':
-                category = 'Warning Issued';
-                break;
-              case 'score_adjustment':
-                category = 'Score Adjustment';
-                break;
-              case 'admin_adjustment':
-                category = 'Manual Adjustment';
-                break;
-              case 'appeal_adjustment':
-                category = 'Appeal Approved';
-                break;
-              case 'appeal_decision':
-                category = 'Appeal Denied';
-                break;
-              default:
-                category = 'Admin Action';
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('admin_review_requests')
+              .orderBy('time', descending: true)
+              .limit(50)
+              .snapshots(),
+          builder: (context, appealsSnap) {
+            if (appealsSnap.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Error loading appeals: ${appealsSnap.error}',
+                    style: TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
             }
 
-            final message = delta != null
-                ? 'Standing adjusted by ${delta > 0 ? "+" : ""}$delta'
-                : reason.isNotEmpty
-                    ? reason
-                    : 'Action recorded';
+            // Collect standing report docs
+            final standingDocs = standingSnap.data?.docs ?? [];
 
-            return Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _CategoryChip(category: category),
-                      const Spacer(),
-                      if (time != null)
+            // Collect appeals (if available) and keep a set of appeal ids
+            final entries = <Map<String, dynamic>>[];
+            final presentAppealIds = <String>{};
+            if (appealsSnap.hasData) {
+              for (final a in appealsSnap.data!.docs) {
+                final data = a.data();
+                final t = (data['time'] as Timestamp?)?.toDate() ??
+                    (data['createdAt'] as Timestamp?)?.toDate() ??
+                    DateTime.now();
+                final uid = (data['user'] as String?) ??
+                    (data['uid'] as String?) ??
+                    'unknown';
+                entries.add({
+                  'source': 'appeal',
+                  'time': t,
+                  'data': data,
+                  'id': a.id,
+                  'userId': uid,
+                });
+                presentAppealIds.add(a.id);
+              }
+            }
+
+            // Map standing reports into a uniform structure, but skip any
+            // 'appeal_adjustment' reports that reference an appeal we already
+            // have to avoid duplicate cards in the merged feed.
+            for (final d in standingDocs) {
+              final data = d.data();
+              final t =
+                  (data['time'] as Timestamp?)?.toDate() ?? DateTime.now();
+              final appealRef = data['appealId'] as String?;
+              if (appealRef != null && presentAppealIds.contains(appealRef)) {
+                // this standing report is the follow-up for an appeal we
+                // already include; skip to prevent duplicate appearance
+                continue;
+              }
+              entries.add({
+                'source': 'standing',
+                'time': t,
+                'data': data,
+                'userId': d.reference.parent.parent?.id ?? 'unknown',
+              });
+            }
+
+            // Filter and sort combined entries by time desc, then take up to 50
+            entries.sort((l, r) =>
+                (r['time'] as DateTime).compareTo(l['time'] as DateTime));
+            final shown = entries.take(50).toList();
+
+            if (shown.isEmpty) {
+              return _EmptyState(
+                icon: Icons.receipt_long,
+                title: 'No moderator actions',
+                message: 'Admin-issued notifications will appear here.',
+              );
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: shown.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final entry = shown[index];
+                final src = entry['source'] as String;
+                final time = entry['time'] as DateTime;
+                final data = Map<String, dynamic>.from(
+                    entry['data'] as Map<String, dynamic>);
+                final userId = entry['userId'] as String? ??
+                    entry['id'] as String? ??
+                    'unknown';
+
+                if (src == 'standing') {
+                  final type = (data['type'] as String?) ?? 'action';
+                  final delta = (data['delta'] as num?)?.toInt();
+                  final reason = (data['reason'] as String?) ?? '';
+
+                  String category;
+                  switch (type) {
+                    case 'content_warning':
+                      category = 'Warning Issued';
+                      break;
+                    case 'score_adjustment':
+                      category = 'Score Adjustment';
+                      break;
+                    case 'admin_adjustment':
+                      category = 'Manual Adjustment';
+                      break;
+                    case 'appeal_adjustment':
+                      category = 'Appeal Approved';
+                      break;
+                    case 'appeal_decision':
+                      category = 'Appeal Denied';
+                      break;
+                    default:
+                      category = 'Admin Action';
+                  }
+
+                  final message = delta != null
+                      ? 'Standing adjusted by ${delta > 0 ? "+" : ""}$delta'
+                      : reason.isNotEmpty
+                          ? reason
+                          : 'Action recorded';
+
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.access_time, size: 14),
-                            const SizedBox(width: 6),
-                            Text(
-                              _fmt(time.toDate()),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
+                            Expanded(child: _CategoryChip(category: category)),
+                            const SizedBox(width: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.access_time, size: 14),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    _fmt(time),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(userId)
-                        .get(),
-                    builder: (context, userSnap) {
-                      String displayUser = userId;
-                      if (userSnap.hasData && userSnap.data?.data() != null) {
-                        final nick =
-                            (userSnap.data!.data()!['nickname'] as String?)
-                                ?.trim();
-                        if (nick != null && nick.isNotEmpty) {
-                          displayUser = nick;
-                        }
-                      }
-                      return Text(
-                        'Target: $displayUser',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        const SizedBox(height: 8),
+                        // If this standing entry contains decision metadata, show
+                        // the decision footer immediately under the header and
+                        // above the target label to avoid it being pushed to the
+                        // bottom of the card.
+                        (() {
+                          final footerData = Map<String, dynamic>.from(data);
+                          if (footerData['decisionAt'] == null &&
+                              footerData['decidedAt'] != null) {
+                            footerData['decisionAt'] = footerData['decidedAt'];
+                          }
+                          final hasDecision =
+                              footerData.containsKey('status') ||
+                                  footerData.containsKey('decisionAt') ||
+                                  footerData.containsKey('decisionNote');
+                          if (hasDecision) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _DecisionFooter(data: footerData),
+                                const SizedBox(height: 8),
+                              ],
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }()),
+                        FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                          future: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(userId)
+                              .get(),
+                          builder: (context, userSnap) {
+                            String displayUser = userId;
+                            if (userSnap.hasData &&
+                                userSnap.data?.data() != null) {
+                              final nick = (userSnap.data!.data()!['nickname']
+                                      as String?)
+                                  ?.trim();
+                              if (nick != null && nick.isNotEmpty) {
+                                displayUser = nick;
+                              }
+                            }
+                            return Text(
+                              'Target: $displayUser',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  if (message.isNotEmpty)
-                    Text(
-                      message,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade800,
-                        height: 1.35,
-                      ),
+                        const SizedBox(height: 10),
+                        if (message.isNotEmpty)
+                          Text(
+                            message,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade800,
+                              height: 1.35,
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            _Tag('type: $type'),
+                            if (delta != null)
+                              _Tag('delta: ${delta > 0 ? "+" : ""}$delta'),
+                          ],
+                        ),
+                      ],
                     ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _Tag('type: $type'),
-                      if (delta != null)
-                        _Tag('delta: ${delta > 0 ? "+" : ""}$delta'),
+                  );
+                }
+
+                // Appeal entry rendering
+                final appealId = entry['id'] as String? ?? 'unknown';
+                final status = (data['status'] as String?) ?? 'pending';
+                final summary = (data['description'] as String?) ??
+                    (data['summary'] as String?) ??
+                    '';
+                final reviewType = (data['reviewType'] as String?) ?? '';
+
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
-                ],
-              ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CategoryChip(
+                                category:
+                                    'Appeal${reviewType.isNotEmpty ? ': $reviewType' : ''}'),
+                          ),
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.access_time, size: 14),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _fmt(time),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Show decision footer (approved/denied) right after the
+                      // appeal header so it's visible above the requester info.
+                      (() {
+                        final footerData = Map<String, dynamic>.from(data);
+                        if (footerData['decisionAt'] == null &&
+                            footerData['decidedAt'] != null) {
+                          footerData['decisionAt'] = footerData['decidedAt'];
+                        }
+                        final hasDecision =
+                            (footerData['status'] as String?) != null &&
+                                    (footerData['status'] as String?) !=
+                                        'pending' ||
+                                footerData.containsKey('decisionAt') ||
+                                footerData.containsKey('decisionNote');
+                        if (hasDecision) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _DecisionFooter(data: footerData),
+                              const SizedBox(height: 8),
+                            ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }()),
+                      FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId)
+                            .get(),
+                        builder: (context, userSnap) {
+                          String displayUser = userId;
+                          if (userSnap.hasData &&
+                              userSnap.data?.data() != null) {
+                            final nick =
+                                (userSnap.data!.data()!['nickname'] as String?)
+                                    ?.trim();
+                            if (nick != null && nick.isNotEmpty) {
+                              displayUser = nick;
+                            }
+                          }
+                          return Text(
+                            'Requester: $displayUser',
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w700),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      if (summary.isNotEmpty)
+                        Text(
+                          summary,
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade800,
+                              height: 1.35),
+                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: status == 'pending'
+                                ? () => _updateAppealStatus(appealId, true)
+                                : null,
+                            icon: const Icon(Icons.check, size: 16),
+                            label: const Text('Approve'),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: status == 'pending'
+                                ? () => _updateAppealStatus(appealId, false)
+                                : null,
+                            icon: const Icon(Icons.close, size: 16),
+                            label: const Text('Reject'),
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             );
           },
         );
@@ -560,8 +811,6 @@ class _AppealsTabState extends State<_AppealsTab> {
           const SizedBox(height: 8),
           Row(
             children: [
-              _StatusPill(status: status),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _labelForType(type),
@@ -906,7 +1155,6 @@ class _DecisionFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = (data['status'] as String?) ?? 'pending';
     final note = data['decisionNote'] as String?;
-    final decidedAt = data['decisionAt'] as Timestamp?;
     final icon = status == 'approved' ? Icons.check_circle : Icons.cancel;
     final color =
         status == 'approved' ? Colors.green.shade700 : Colors.red.shade700;
@@ -938,16 +1186,9 @@ class _DecisionFooter extends StatelessWidget {
                         color: color,
                       ),
                     ),
-                    if (decidedAt != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        _fmt(decidedAt.toDate()),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
+                    // decision timestamp removed: the header already shows
+                    // the action time and including another date here was
+                    // duplicative in the UI.
                   ],
                 ),
               ),
@@ -1048,6 +1289,8 @@ class _CategoryChip extends StatelessWidget {
       ),
       child: Text(
         category,
+        softWrap: true,
+        maxLines: 2,
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
@@ -1129,55 +1372,9 @@ class _Tag extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  final String status;
-  const _StatusPill({required this.status});
-
-  Color _color() {
-    switch (status) {
-      case 'pending':
-        return Colors.orange.shade100;
-      case 'approved':
-        return Colors.green.shade100;
-      case 'denied':
-        return Colors.red.shade100;
-      default:
-        return Colors.grey.shade200;
-    }
-  }
-
-  Color _text() {
-    switch (status) {
-      case 'pending':
-        return Colors.orange.shade900;
-      case 'approved':
-        return Colors.green.shade900;
-      case 'denied':
-        return Colors.red.shade900;
-      default:
-        return Colors.black87;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: _color(),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: _text(),
-        ),
-      ),
-    );
-  }
-}
+// Status pill removed from headers to avoid duplication with the
+// decision footer. The footer (rendered by `_DecisionFooter`) now
+// communicates approved/denied status and timestamp beneath the header.
 
 String _fmt(DateTime d) {
   final months = const [

@@ -483,12 +483,19 @@ class _CommunityHealthTile extends StatelessWidget {
 
           for (final doc in snapshot.data!.docs) {
             final data = doc.data() as Map<String, dynamic>?;
-            if (data != null && data.containsKey('standing')) {
-              final standing = data['standing'];
-              final standingValue = standing is num ? standing.toDouble() : 0.0;
-              totalStanding += standingValue;
-              userCount++;
+            double standingValue = 100.0;
+            if (data != null) {
+              if (data['standing'] is num) {
+                standingValue = (data['standing'] as num).toDouble();
+              } else if (data['standing'] is String) {
+                standingValue = double.tryParse(data['standing']) ?? 100.0;
+              } else if (data['score'] is num) {
+                standingValue = (data['score'] as num).toDouble();
+              }
+              standingValue = standingValue.clamp(0.0, 100.0);
             }
+            totalStanding += standingValue;
+            userCount++;
           }
 
           if (userCount > 0) {
