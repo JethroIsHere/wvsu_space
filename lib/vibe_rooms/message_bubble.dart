@@ -5,18 +5,23 @@ class MessageBubble extends StatelessWidget {
   final String author;
   final DateTime timestamp;
   final bool isOwn;
+  final Color? backgroundColor;
+  final Color? borderColor;
 
   const MessageBubble(
       {super.key,
       required this.text,
       required this.author,
       required this.timestamp,
-      this.isOwn = false});
+      this.isOwn = false,
+      this.backgroundColor,
+      this.borderColor});
 
   @override
   Widget build(BuildContext context) {
     final align = isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bg = isOwn ? Colors.blue[100] : Colors.grey[200];
+    final bg = backgroundColor ?? (isOwn ? Colors.blue[100] : Colors.grey[200]);
+    final borderCol = borderColor ?? Colors.transparent;
     final radius = isOwn
         ? const BorderRadius.only(
             topLeft: Radius.circular(12),
@@ -33,7 +38,10 @@ class MessageBubble extends StatelessWidget {
         Container(
           margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: bg, borderRadius: radius),
+          decoration: BoxDecoration(
+              color: bg,
+              borderRadius: radius,
+              border: Border.all(color: borderCol)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

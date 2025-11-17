@@ -60,6 +60,30 @@ class AppColors extends ThemeExtension<AppColors> {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Ensure we have an authenticated user so Firestore rules that require
+  // authenticated access allow reads/writes. Use anonymous sign-in for
+  // quick local/dev testing so rooms are shared across emulators.
+  try {
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+    }
+  } catch (e) {
+    // Non-fatal: app will fall back to in-memory behavior if auth fails.
+    // Keep quiet here; repository already falls back when Firestore is denied.
+  }
+
+  // Optional: use local Firebase emulators for development.
+  // Enable by passing --dart-define=USE_FIREBASE_EMULATOR=true to `flutter run`.
+  const useEmulator =
+      bool.fromEnvironment('USE_FIREBASE_EMULATOR', defaultValue: false);
+  if (useEmulator) {
+    try {
+      FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+    } catch (e) {
+      // ignore if emulators are not available
+    }
+  }
   runApp(const MyApp());
 }
 // ------------------------------------

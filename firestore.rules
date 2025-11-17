@@ -108,6 +108,71 @@ service cloud.firestore {
 			allow read, update, delete: if false;
 		}
 
+		// Vibe Rooms: public read, authenticated create, owner-only delete.
+		match /vibe_rooms/{roomId} {
+			// Public listing: anyone can read rooms (adjust if you prefer restricted listings)
+			allow read: if true;
+
+			// Creating a room requires authentication and the ownerUid must match the caller.
+			allow create: if isSignedIn()
+				&& request.resource.data.ownerUid == request.auth.uid
+				&& request.resource.data.title is string
+				&& request.resource.data.mood is string
+				&& request.resource.data.participantCount is int
+				&& request.resource.data.maxParticipants is int;
+
+			// Allow updates for participant list changes by any signed-in user
+			// (clients update participants/participantCount) or allow owner to update metadata.
+			// Use `diff(...).affectedKeys()` to allow updates that only change
+			// the participant fields without requiring the request resource to
+			// contain only those keys.
+			allow update: if isSignedIn() && (
+				(request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount','participants']))
+				|| (resource.data.ownerUid == request.auth.uid)
+			);
+
+			// Only the owner (creator) may delete the room.
+			allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+			// Presence subcollection: one doc per user (doc id == uid)
+			match /presence/{uid} {
+				// Allow anyone to read presence for UI convenience
+				allow read: if true;
+
+				// Only the user themselves may create/update/delete their presence doc.
+				// We only accept `lastSeen` (timestamp) and optional `nickname` (string).
+				allow create: if isSignedIn()
+					&& request.auth.uid == uid
+					&& request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
+					&& (request.resource.data.lastSeen is timestamp);
+
+				allow update: if isSignedIn()
+					&& request.auth.uid == uid
+					&& request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
+					&& (request.resource.data.lastSeen is timestamp);
+
+				allow delete: if isSignedIn() && request.auth.uid == uid;
+			}
+
+			// Messages subcollection for rooms
+			match /messages/{messageId} {
+				// Public read so listings inside a room are visible; require auth to post.
+				allow read: if true;
+				// Only signed-in users may create messages. Basic validation on fields.
+				allow create: if isSignedIn()
+					&& request.resource.data.senderId == request.auth.uid
+					&& request.resource.data.text is string
+					&& request.resource.data.senderNickname is string
+					&& request.resource.data.timestamp is timestamp
+					// optional system flag
+					&& (!request.resource.data.keys().hasAny(['isSystem']) || request.resource.data.isSystem is bool);
+				// Disallow client-side updates for integrity. Allow deletes only by the room owner.
+				allow update: if false;
+				allow delete: if isSignedIn() &&
+					(request.auth.uid == get(/databases/$(database)/documents/vibe_rooms/$(roomId)).data.ownerUid);
+			}
+		}
+
 		// Users: allow admins to read user profiles (for moderation UI)
 		// Also allow a user to read their own profile document.
 		// Allow reading other users' docs for rating/report transactions
