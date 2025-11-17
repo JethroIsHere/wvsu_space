@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'home.dart';
 import 'community_standing.dart';
 import 'widgets/bottom_nav.dart';
+import 'vibe_rooms/room_list.dart';
+import 'vibe_rooms/add_room_dialog.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -13,12 +15,12 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
 
-  final List<Widget> _pages = const [
-    HomeScreen(),
-    // Placeholder pages for Rooms and Gratitude until separate screens exist
-    Center(child: Text('Rooms (coming soon)')),
-    Center(child: Text('Gratitude (coming soon)')),
-    CommunityStandingScreen(),
+  final List<Widget> _pages = [
+    const HomeScreen(),
+    // Vibe Rooms list replaces the previous placeholder
+    const RoomListScreen(),
+    const Center(child: Text('Gratitude (coming soon)')),
+    const CommunityStandingScreen(),
   ];
 
   void _onIndexChanged(int i) {
@@ -33,6 +35,21 @@ class _MainShellState extends State<MainShell> {
         currentIndex: _index,
         onIndexChanged: _onIndexChanged,
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _index == 1
+          ? Padding(
+              // raise FAB so it overlaps less with list items
+              padding: const EdgeInsets.only(bottom: 40.0),
+              child: FloatingActionButton(
+                backgroundColor: Colors.green,
+                onPressed: () async {
+                  await showDialog(
+                      context: context, builder: (_) => const AddRoomDialog());
+                },
+                child: const Icon(Icons.add),
+              ),
+            )
+          : null,
     );
   }
 }

@@ -1,6 +1,4 @@
-/// Public exports for the Vibe Rooms feature.
-library vibe_rooms;
-
+// Public exports for the Vibe Rooms feature.
 export 'models.dart';
 export 'selector.dart';
 export 'chat.dart';

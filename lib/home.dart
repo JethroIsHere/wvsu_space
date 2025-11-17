@@ -452,40 +452,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 10),
                     ConstrainedBox(
                       constraints: const BoxConstraints(minHeight: 104),
-                      child: _OutlinedCard(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: BrandColors.appGreen.withAlpha(51),
-                                shape: BoxShape.circle,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.pushNamed(context, AppRouter.vibeRooms);
+                        },
+                        child: _OutlinedCard(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: BrandColors.appGreen.withAlpha(51),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.groups_2,
+                                  color: BrandColors.appGreen,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.groups_2,
-                                color: BrandColors.appGreen,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Themed Rooms',
+                                      style: textTheme.headlineSmall,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Join similar interest groups & more',
+                                      style: textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Themed Rooms',
-                                    style: textTheme.headlineSmall,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Join similar interest groups & more',
-                                    style: textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),

@@ -23,6 +23,9 @@ import '../delete_account.dart';
 import '../request_review.dart';
 import '../notifications.dart';
 
+// Vibe Rooms selector
+import '../vibe_rooms/selector.dart';
+
 // Optional stub for chat session
 import '../chat_session.dart';
 
@@ -51,6 +54,7 @@ class AppRouter {
   static const String profile = '/profile';
   static const String requestReview = '/request-review';
   static const String notifications = '/notifications';
+  static const String vibeRooms = '/rooms';
   // Legacy route name for backwards compatibility
   static const String warnings = '/warnings';
 
@@ -117,6 +121,8 @@ class AppRouter {
       case AppRouter.notifications:
       case AppRouter.warnings: // Legacy route support
         return _buildRoute(const NotificationsScreen(), settings);
+      case AppRouter.vibeRooms:
+        return _buildRoute(const VibeRoomSelector(), settings);
       default:
         return _buildRoute(const _NotFoundPage(), settings);
     }

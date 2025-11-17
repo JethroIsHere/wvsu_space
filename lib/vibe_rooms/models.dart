@@ -20,6 +20,7 @@ class VibeMessage {
   final String senderNickname;
   final String text;
   final DateTime timestamp;
+  final bool isSystem;
 
   VibeMessage({
     required this.messageId,
@@ -27,6 +28,7 @@ class VibeMessage {
     required this.senderNickname,
     required this.text,
     required this.timestamp,
+    this.isSystem = false,
   });
 }
 
@@ -40,6 +42,7 @@ class VibeRoom {
   final String status;
   int participantCount;
   final int maxParticipants;
+  final String? ownerUid;
 
   VibeRoom({
     required this.roomId,
@@ -51,5 +54,6 @@ class VibeRoom {
     required this.status,
     required this.participantCount,
     required this.maxParticipants,
+    this.ownerUid,
   });
 }

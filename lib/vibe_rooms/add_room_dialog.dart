@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'repository.dart';
 import 'utils.dart';
+import 'chat.dart';
 
 class AddRoomDialog extends StatefulWidget {
   const AddRoomDialog({super.key});
@@ -48,7 +49,7 @@ class _AddRoomDialogState extends State<AddRoomDialog> {
               maxLines: 3),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _mood,
+            initialValue: _mood,
             items: moods
                 .map((m) => DropdownMenuItem(value: m.id, child: Text(m.name)))
                 .toList(),
@@ -63,9 +64,18 @@ class _AddRoomDialogState extends State<AddRoomDialog> {
                 final title = _titleCtl.text.trim();
                 final desc = _descCtl.text.trim();
                 if (title.isEmpty) return;
-                await VibeRoomsRepository.createRoom(
+                final id = await VibeRoomsRepository.createRoom(
                     mood: _mood, title: title, description: desc);
-                if (context.mounted) Navigator.pop(context);
+                // Ensure the creator is marked as joined and navigate into the room.
+                await VibeRoomsRepository.joinRoom(id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => RoomChatScreen(roomId: id)),
+                  );
+                }
               },
               child: const Text('Add'),
             ),
