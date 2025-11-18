@@ -18,6 +18,7 @@ import '../settings.dart';
 import '../profile.dart';
 import '../community_guidelines.dart';
 import '../community_standing.dart';
+import '../gratitude_wall/gratitude_wall.dart';
 import '../standing_activity.dart';
 import '../delete_account.dart';
 import '../request_review.dart';
@@ -57,6 +58,7 @@ class AppRouter {
   static const String vibeRooms = '/rooms';
   // Legacy route name for backwards compatibility
   static const String warnings = '/warnings';
+  static const String gratitude = '/gratitude';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -123,6 +125,8 @@ class AppRouter {
         return _buildRoute(const NotificationsScreen(), settings);
       case AppRouter.vibeRooms:
         return _buildRoute(const VibeRoomSelector(), settings);
+      case AppRouter.gratitude:
+        return _buildRoute(const GratitudeWallScreen(), settings);
       default:
         return _buildRoute(const _NotFoundPage(), settings);
     }

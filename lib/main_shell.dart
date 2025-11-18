@@ -4,6 +4,7 @@ import 'community_standing.dart';
 import 'widgets/bottom_nav.dart';
 import 'vibe_rooms/room_list.dart';
 import 'vibe_rooms/add_room_dialog.dart';
+import 'gratitude_wall/gratitude_wall.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -19,7 +20,7 @@ class _MainShellState extends State<MainShell> {
     const HomeScreen(),
     // Vibe Rooms list replaces the previous placeholder
     const RoomListScreen(),
-    const Center(child: Text('Gratitude (coming soon)')),
+    const GratitudeWallScreen(),
     const CommunityStandingScreen(),
   ];
 
