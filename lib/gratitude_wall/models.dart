@@ -10,6 +10,7 @@ class GratitudePost {
   final Timestamp timestamp;
   final Timestamp? expiresAt;
   final int likes;
+  final Map<String, dynamic>? likedBy;
 
   GratitudePost({
     required this.id,
@@ -21,6 +22,7 @@ class GratitudePost {
     required this.timestamp,
     this.expiresAt,
     this.likes = 0,
+    this.likedBy,
   });
 
   factory GratitudePost.fromDoc(DocumentSnapshot doc) {
@@ -34,7 +36,9 @@ class GratitudePost {
       isAnonymous: data['isAnonymous'] as bool? ?? false,
       timestamp: data['timestamp'] as Timestamp? ?? Timestamp.now(),
       expiresAt: data['expiresAt'] as Timestamp?,
-      likes: (data['likes'] as num?)?.toInt() ?? 0,
+      likes: (data['likes'] as num?)?.toInt() ??
+          (data['likedBy'] is Map ? (data['likedBy'] as Map).length : 0),
+      likedBy: data['likedBy'] as Map<String, dynamic>?,
     );
   }
 
@@ -48,6 +52,7 @@ class GratitudePost {
       'timestamp': timestamp,
       'expiresAt': expiresAt,
       'likes': likes,
+      'likedBy': likedBy,
     };
   }
 }

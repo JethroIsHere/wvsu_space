@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'main.dart'; // Importing to get our AppColors extension
 // --- Added Imports ---
 import 'router/app_router.dart';
+import 'widgets/app_button.dart';
 // --------------------
 
 class GettingStartedScreen extends StatefulWidget {
@@ -125,7 +126,7 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
               // --- Buttons (Conditional) ---
               if (_currentPage < 3) ...[
                 // --- Pages 1-3 Buttons ---
-                ElevatedButton(
+                AppButton(
                   style: elevatedButtonStyle,
                   onPressed: () {
                     _pageController.nextPage(
@@ -150,7 +151,7 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
                 ),
               ] else ...[
                 // --- Page 4 Buttons ---
-                ElevatedButton(
+                AppButton(
                   style: elevatedButtonStyle,
                   onPressed: () {
                     Navigator.pushNamed(context, AppRouter.login);

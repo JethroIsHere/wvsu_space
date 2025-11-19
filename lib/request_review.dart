@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'utils/app_colors.dart';
+import 'widgets/app_button.dart';
 
 class RequestReviewScreen extends StatefulWidget {
   const RequestReviewScreen({super.key});
@@ -72,10 +73,8 @@ class _RequestReviewScreenState extends State<RequestReviewScreen> {
       }
 
       // Fetch current standing score
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final score =
           userDoc.data()?['standing'] ?? userDoc.data()?['score'] ?? 100;
 
@@ -297,16 +296,16 @@ class _RequestReviewScreenState extends State<RequestReviewScreen> {
                     child: InkWell(
                       onTap: isEnabled
                           ? () => setState(
-                              () => _selectedReviewType = type['id'] as String,
-                            )
+                                () =>
+                                    _selectedReviewType = type['id'] as String,
+                              )
                           : null,
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? BrandColors.infoLight
-                              : Colors.white,
+                          color:
+                              isSelected ? BrandColors.infoLight : Colors.white,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isSelected
@@ -357,10 +356,9 @@ class _RequestReviewScreenState extends State<RequestReviewScreen> {
               const SizedBox(height: 24),
 
               // Submit button
-              ElevatedButton(
-                onPressed: (_isSubmitting || !_canSubmit)
-                    ? null
-                    : _submitReview,
+              AppButton(
+                onPressed:
+                    (_isSubmitting || !_canSubmit) ? null : _submitReview,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BrandColors.appBlue,
                   foregroundColor: Colors.white,

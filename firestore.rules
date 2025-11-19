@@ -76,6 +76,37 @@ service cloud.firestore {
 			allow delete: if isAdmin();
 		}
 
+		// Gratitude Wall posts: gratitude (permanent) and express (anonymous, expires)
+		match /gratitude_posts/{postId} {
+			// Public read so the wall is visible to everyone in the app
+			allow read: if true;
+
+			// Creating a post requires authentication and basic validation
+			allow create: if isSignedIn()
+				&& request.resource.data.authorId == request.auth.uid
+				&& request.resource.data.content is string
+				&& request.resource.data.type is string
+				&& (request.resource.data.type == 'gratitude' || request.resource.data.type == 'express')
+				&& request.resource.data.timestamp is timestamp
+				&& request.resource.data.isAnonymous is bool
+				// express posts must include expiresAt timestamp; gratitude posts must not include expiresAt
+				&& (
+					(request.resource.data.type == 'express' && request.resource.data.expiresAt is timestamp)
+					|| (request.resource.data.type == 'gratitude' && !request.resource.data.keys().hasAny(['expiresAt']))
+				)
+				// likes should be numeric (clients typically start at 0)
+				&& (request.resource.data.likes is number || !request.resource.data.keys().hasAny(['likes']));
+
+						// Allow clients to update only the `likes` and `likedBy` fields (signed-in users).
+						// This is a slightly more permissive rule that accepts updates which only
+						// touch the top-level `likes` and `likedBy` keys. We use this as a
+						// fallback to avoid rejecting valid client updates due to edge cases
+						// (null maps, nested-diff behavior). If needed, we can tighten later.
+						allow update: if isSignedIn()
+								&& request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes','likedBy']);
+			allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+		}
+
 		// User-submitted reports (v2 path to avoid legacy triggers)
 		match /user_reports/{id} {
 			allow create: if isSignedIn();

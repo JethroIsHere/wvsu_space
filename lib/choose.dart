@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'router/app_router.dart';
 import 'utils/app_colors.dart';
+import 'widgets/app_button.dart';
 
 class ChooseScreen extends StatelessWidget {
   const ChooseScreen({super.key});
@@ -56,8 +57,8 @@ class ChooseScreen extends StatelessWidget {
               Text(
                 'Choose',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
               const SizedBox(height: 12),
               Text(
@@ -67,7 +68,7 @@ class ChooseScreen extends StatelessWidget {
               ),
               const SizedBox(height: 36),
 
-              ElevatedButton(
+              AppButton(
                 style: elevatedButtonStyle,
                 onPressed: () => Navigator.pushNamed(context, AppRouter.login),
                 child: const Text('Log In'),

@@ -92,9 +92,10 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
   Future<void> _cleanupExpiredReleasePosts() async {
     try {
       final nowTs = Timestamp.fromDate(DateTime.now().toUtc());
+      // Query expired posts by expiresAt only (no composite index required).
+      // Only express posts have `expiresAt` so this returns the right set.
       final q = await FirebaseFirestore.instance
           .collection('gratitude_posts')
-          .where('type', isEqualTo: 'express')
           .where('expiresAt', isLessThan: nowTs)
           .limit(200)
           .get();
@@ -110,24 +111,35 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
   }
 
   Stream<List<GratitudePost>> _query(String type) {
-    final nowTs = Timestamp.fromDate(DateTime.now().toUtc());
     if (type == 'gratitude') {
+      // Order by timestamp ascending so older posts appear on top and newer ones at bottom.
       return FirebaseFirestore.instance
           .collection('gratitude_posts')
           .where('type', isEqualTo: 'gratitude')
-          .orderBy('timestamp', descending: true)
+          .orderBy('timestamp', descending: false)
           .snapshots()
-          .map((snap) =>
-              snap.docs.map((d) => GratitudePost.fromDoc(d)).toList());
+          .map((snap) {
+        debugPrint('Gratitude snapshot: ${snap.docs.length} docs');
+        return snap.docs.map((d) => GratitudePost.fromDoc(d)).toList();
+      });
     }
-    // express: only non-expired
+    // For express posts we order by creation `timestamp` ascending so older
+    // posts appear on top and newer append to the bottom. We filter expired
+    // posts client-side (by `expiresAt`) to avoid requiring a composite
+    // index on `expiresAt` + `timestamp`.
     return FirebaseFirestore.instance
         .collection('gratitude_posts')
         .where('type', isEqualTo: 'express')
-        .where('expiresAt', isGreaterThan: nowTs)
-        .orderBy('expiresAt')
+        .orderBy('timestamp', descending: false)
         .snapshots()
-        .map((snap) => snap.docs.map((d) => GratitudePost.fromDoc(d)).toList());
+        .map((snap) {
+      final now = DateTime.now().toUtc();
+      return snap.docs
+          .map((d) => GratitudePost.fromDoc(d))
+          .where(
+              (p) => p.expiresAt != null && p.expiresAt!.toDate().isAfter(now))
+          .toList();
+    });
   }
 
   Future<void> _openComposer() async {
@@ -359,38 +371,113 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
                 StreamBuilder<List<GratitudePost>>(
                   stream: _query('gratitude'),
                   builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(
+                          child:
+                              Text('Error loading posts: ${snapshot.error}'));
+                    }
                     final posts = snapshot.data ?? [];
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
+                    // Ensure expired express posts are cleaned up when the wall is active.
+                    // Firestore TTL is the recommended server-side solution; this
+                    // client-side cleanup helps while users have the app open.
+                    unawaited(_cleanupExpiredReleasePosts());
                     if (posts.isEmpty) {
                       return const Center(
                           child: Text('No gratitude posts yet.'));
                     }
                     return ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 120),
+                      padding: const EdgeInsets.only(top: 12, bottom: 120),
                       itemCount: posts.length,
-                      itemBuilder: (context, i) => PostTile(post: posts[i]),
+                      itemBuilder: (context, i) =>
+                          PostTile(key: ValueKey(posts[i].id), post: posts[i]),
                     );
                   },
                 ),
 
-                // Express Tab
-                StreamBuilder<List<GratitudePost>>(
-                  stream: _query('express'),
-                  builder: (context, snapshot) {
-                    final posts = snapshot.data ?? [];
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                // Express Tab: try server query first; if it errors (index
+                // required), fall back to an expiresAt-only query so user
+                // content remains visible.
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('gratitude_posts')
+                      .where('type', isEqualTo: 'express')
+                      .where('expiresAt',
+                          isGreaterThan:
+                              Timestamp.fromDate(DateTime.now().toUtc()))
+                      .orderBy('expiresAt')
+                      .snapshots(),
+                  builder: (context, serverSnap) {
+                    if (serverSnap.hasError) {
+                      // fall back to expiresAt-only stream
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('gratitude_posts')
+                            .where('expiresAt',
+                                isGreaterThan:
+                                    Timestamp.fromDate(DateTime.now().toUtc()))
+                            .orderBy('expiresAt')
+                            .snapshots(),
+                        builder: (context, fallbackSnap) {
+                          if (fallbackSnap.hasError) {
+                            return Center(
+                                child: Text(
+                                    'Error loading posts: ${fallbackSnap.error}'));
+                          }
+                          if (fallbackSnap.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+                          final posts = (fallbackSnap.data?.docs ?? [])
+                              .map((d) => GratitudePost.fromDoc(d))
+                              .where((p) =>
+                                  p.expiresAt != null &&
+                                  p.expiresAt!
+                                      .toDate()
+                                      .isAfter(DateTime.now().toUtc()))
+                              .toList();
+                          if (posts.isEmpty) {
+                            return const Center(
+                                child: Text('No recent express posts.'));
+                          }
+                          return ListView.builder(
+                            padding:
+                                const EdgeInsets.only(top: 12, bottom: 120),
+                            itemCount: posts.length,
+                            itemBuilder: (context, i) => PostTile(
+                                key: ValueKey(posts[i].id), post: posts[i]),
+                          );
+                        },
+                      );
+                    }
+
+                    if (serverSnap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
+
+                    // Client-side cleanup while the screen is active.
+                    unawaited(_cleanupExpiredReleasePosts());
+
+                    final posts = (serverSnap.data?.docs ?? [])
+                        .map((d) => GratitudePost.fromDoc(d))
+                        .where((p) =>
+                            p.expiresAt != null &&
+                            p.expiresAt!
+                                .toDate()
+                                .isAfter(DateTime.now().toUtc()))
+                        .toList();
                     if (posts.isEmpty) {
                       return const Center(
                           child: Text('No recent express posts.'));
                     }
                     return ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 120),
+                      padding: const EdgeInsets.only(top: 12, bottom: 120),
                       itemCount: posts.length,
-                      itemBuilder: (context, i) => PostTile(post: posts[i]),
+                      itemBuilder: (context, i) =>
+                          PostTile(key: ValueKey(posts[i].id), post: posts[i]),
                     );
                   },
                 ),

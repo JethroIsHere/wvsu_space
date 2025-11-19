@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'main.dart'; // To access AppColors if needed later
 import 'router/app_router.dart';
+import 'widgets/app_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -264,7 +265,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const SizedBox(height: 16),
 
               // --- Sign Up Button ---
-              ElevatedButton(
+              AppButton(
                 style: elevatedButtonStyle,
                 // Disable button while loading or call _signUp
                 onPressed: _isLoading ? null : _signUp,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/app_button.dart';
 
 class PostComposer extends StatefulWidget {
   const PostComposer({super.key});
@@ -25,36 +26,44 @@ class _PostComposerState extends State<PostComposer> {
     if (text.isEmpty) return;
     setState(() => _submitting = true);
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-      String? nickname;
-      try {
-        final userDoc =
-            await FirebaseFirestore.instance.collection('users').doc(uid).get();
-        final data = userDoc.data();
-        nickname = data?['nickname'] as String?;
-      } catch (_) {
-        nickname = null;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('You are not signed in.')),
+          );
+        }
+        return;
       }
+      final uid = user.uid;
+      debugPrint('Posting as uid=$uid');
       final now = DateTime.now().toUtc();
+      // express posts expire after 30 minutes
       final expires = _type == 'express'
-          ? Timestamp.fromDate(now.add(const Duration(minutes: 10)))
+          ? Timestamp.fromDate(now.add(const Duration(minutes: 30)))
           : null;
       final doc =
           FirebaseFirestore.instance.collection('gratitude_posts').doc();
-      await doc.set({
+      final map = <String, dynamic>{
         'type': _type,
         'content': text,
         'authorId': uid,
-        'authorNickname': nickname,
         'isAnonymous': _type == 'express',
         'timestamp': Timestamp.fromDate(now),
-        'expiresAt': expires,
         'likes': 0,
-      });
+      };
+      if (expires != null) map['expiresAt'] = expires;
+      debugPrint('Writing gratitude_posts doc with data: $map');
+      await doc.set(map);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
       debugPrint('Failed to post: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to post: ${e.toString()}')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -105,10 +114,17 @@ class _PostComposerState extends State<PostComposer> {
               ),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
+            AppButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
-                  ? const CircularProgressIndicator()
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
                   : const Text('Post'),
             )
           ],

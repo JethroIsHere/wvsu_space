@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'router/app_router.dart';
+import 'widgets/app_button.dart';
 
 class LogInScreen extends StatefulWidget {
   const LogInScreen({super.key});
@@ -332,7 +333,7 @@ class _LogInScreenState extends State<LogInScreen> {
               const SizedBox(height: 16),
 
               // --- Log In Button ---
-              ElevatedButton(
+              AppButton(
                 style: elevatedButtonStyle,
                 onPressed: _isLoading ? null : _logIn,
                 child: _isLoading
