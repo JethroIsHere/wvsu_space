@@ -43,6 +43,7 @@ class _LogsAndAppealsScreenState extends State<LogsAndAppealsScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
+        if (!mounted) return;
         setState(() {
           _isAdmin = false;
           _loadingAdmin = false;
@@ -50,11 +51,13 @@ class _LogsAndAppealsScreenState extends State<LogsAndAppealsScreen> {
         return;
       }
       final token = await user.getIdTokenResult(true);
+      if (!mounted) return;
       setState(() {
         _isAdmin = (token.claims ?? const {})['admin'] == true;
         _loadingAdmin = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _isAdmin = false;
         _loadingAdmin = false;

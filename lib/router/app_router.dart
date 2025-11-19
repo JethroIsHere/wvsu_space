@@ -18,6 +18,7 @@ import '../settings.dart';
 import '../profile.dart';
 import '../community_guidelines.dart';
 import '../community_standing.dart';
+import '../report_user.dart';
 import '../gratitude_wall/gratitude_wall.dart';
 import '../standing_activity.dart';
 import '../delete_account.dart';
@@ -50,6 +51,7 @@ class AppRouter {
   static const String settings = '/settings';
   static const String communityGuidelines = '/community-guidelines';
   static const String communityStanding = '/standing';
+  static const String reportUser = '/report-user';
   static const String standingActivity = '/standing/activity';
   static const String deleteAccount = '/delete-account';
   static const String profile = '/profile';
@@ -112,6 +114,8 @@ class AppRouter {
         return _buildRoute(const CommunityGuidelinesScreen(), settings);
       case AppRouter.communityStanding:
         return _buildRoute(const CommunityStandingScreen(), settings);
+      case AppRouter.reportUser:
+        return _buildRoute(const ReportUserScreen(), settings);
       case AppRouter.standingActivity:
         return _buildRoute(const StandingActivityScreen(), settings);
       case AppRouter.deleteAccount:

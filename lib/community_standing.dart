@@ -735,6 +735,26 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                       child: const Text('View Guidelines'),
                     ),
 
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, AppRouter.reportUser);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: BrandColors.appBlue,
+                        side: const BorderSide(
+                          color: BrandColors.appBlue,
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: const Text('Report a user'),
+                    ),
+
                     const SizedBox(height: 40),
                   ],
                 ),
