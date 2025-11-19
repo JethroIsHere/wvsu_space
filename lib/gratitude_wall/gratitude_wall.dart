@@ -487,6 +487,7 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: _openComposer,
         child: const Icon(Icons.add),
       ),

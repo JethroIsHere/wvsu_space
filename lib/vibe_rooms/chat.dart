@@ -3,6 +3,7 @@ import 'repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'models.dart';
 import 'message_bubble.dart';
+import '../widgets/app_button.dart';
 
 class RoomChatScreen extends StatefulWidget {
   final String roomId;
@@ -78,7 +79,12 @@ class _RoomChatScreenState extends State<RoomChatScreen>
   Future<bool> _onWillPop() async {
     final shouldLeave = await _confirmLeave();
     if (shouldLeave) {
-      await VibeRoomsRepository.leaveRoom(widget.roomId, userId: 'me');
+      try {
+        await VibeRoomsRepository.leaveRoom(widget.roomId, userId: 'me');
+      } catch (e, st) {
+        debugPrint('Error while leaving room: $e');
+        debugPrint('$st');
+      }
       _left = true;
     }
     return shouldLeave;
@@ -98,7 +104,7 @@ class _RoomChatScreenState extends State<RoomChatScreen>
                   TextButton(
                       onPressed: () => Navigator.pop(c, false),
                       child: const Text('Cancel')),
-                  ElevatedButton(
+                  AppButton(
                       onPressed: () => Navigator.pop(c, true),
                       child: const Text('Leave and Delete')),
                 ],
@@ -116,7 +122,7 @@ class _RoomChatScreenState extends State<RoomChatScreen>
                 TextButton(
                     onPressed: () => Navigator.pop(c, false),
                     child: const Text('Cancel')),
-                ElevatedButton(
+                AppButton(
                     onPressed: () => Navigator.pop(c, true),
                     child: const Text('Leave')),
               ],
@@ -134,9 +140,18 @@ class _RoomChatScreenState extends State<RoomChatScreen>
         try {
           final shouldLeave = await _onWillPop();
           if (shouldLeave && context.mounted) {
-            Navigator.of(context).pop();
+            try {
+              final nav = Navigator.of(context);
+              if (nav.canPop()) nav.pop();
+            } catch (e, st) {
+              debugPrint('Navigation pop failed after leave: $e');
+              debugPrint('$st');
+            }
           }
-        } catch (_) {}
+        } catch (e, st) {
+          debugPrint('Error during onPop handling: $e');
+          debugPrint('$st');
+        }
       },
       child: Scaffold(
         appBar: AppBar(
@@ -283,6 +298,7 @@ class _RoomChatScreenState extends State<RoomChatScreen>
                                       BorderRadius.all(Radius.circular(24)))))),
                   const SizedBox(width: 8),
                   FloatingActionButton(
+                    heroTag: null,
                     mini: true,
                     onPressed: () async {
                       final txt = _ctl.text.trim();

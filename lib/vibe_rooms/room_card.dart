@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'models.dart';
 import 'styles.dart';
 import 'utils.dart';
+import '../widgets/app_button.dart';
 
 class RoomCard extends StatelessWidget {
   final VibeRoom room;
@@ -190,16 +191,20 @@ class RoomCard extends StatelessWidget {
                                       onPressed: () => Navigator.pop(context),
                                       child: const Text('Cancel')),
                                   const SizedBox(width: 8),
-                                  ElevatedButton.icon(
+                                  AppButton(
                                     onPressed: () {
                                       Navigator.pop(context);
                                       if (onJoin != null) onJoin!();
                                     },
-                                    icon: const Icon(Icons.login, size: 18),
-                                    label: const Text('Join Room'),
-                                    style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 14, vertical: 12)),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Icon(Icons.login,
+                                            size: 18, color: Colors.white),
+                                        SizedBox(width: 8),
+                                        Text('Join Room'),
+                                      ],
+                                    ),
                                   )
                                 ],
                               ),

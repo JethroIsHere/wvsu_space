@@ -492,15 +492,28 @@ class VibeRoomsRepository {
           // deleted reliably from client code (permission rules prevent it).
           // We skip attempting to delete presence docs here.
 
-          // delete messages in batches (client-side recursive delete)
-          try {
-            await _deleteRoomMessages(roomId);
-          } catch (_) {}
-
-          await docRef.delete();
+          // Run heavy deletion work in the background so the UI leave flow
+          // isn't blocked and we avoid race conditions between removal and
+          // listeners that may still be active on the client.
+          () async {
+            try {
+              try {
+                await _deleteRoomMessages(roomId);
+              } catch (e) {
+                debugPrint('Background _deleteRoomMessages failed: $e');
+              }
+              try {
+                await docRef.delete();
+              } catch (e) {
+                debugPrint('Background room doc delete failed: $e');
+              }
+            } catch (e) {
+              debugPrint('Background room cleanup failed: $e');
+            }
+          }();
         } catch (e) {
           debugPrint(
-              'VibeRoomsRepository.leaveRoom (owner): Firestore delete failed: $e');
+              'VibeRoomsRepository.leaveRoom (owner): Firestore delete scheduling failed: $e');
         }
 
         return;
