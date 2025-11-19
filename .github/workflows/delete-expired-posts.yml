@@ -31,12 +31,17 @@ jobs:
       - name: Install dependencies for scripts
         working-directory: ./scripts
         run: |
-          # ensure a package.json exists or just install firebase-admin locally
+          # ensure a package.json exists or just install firebase-admin + minimist locally
           if [ -f package.json ]; then
-            npm ci
+            # prefer a clean install when lockfile is present, fall back to npm install if npm ci fails
+            if [ -f package-lock.json ]; then
+              npm ci || npm install
+            else
+              npm install
+            fi
           else
             npm init -y
-            npm install firebase-admin
+            npm install firebase-admin minimist
           fi
 
       - name: Create service account file
