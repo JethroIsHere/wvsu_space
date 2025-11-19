@@ -42,6 +42,7 @@ class _MainShellState extends State<MainShell> {
               // raise FAB so it overlaps less with list items
               padding: const EdgeInsets.only(bottom: 40.0),
               child: FloatingActionButton(
+                heroTag: null,
                 backgroundColor: Colors.green,
                 onPressed: () async {
                   await showDialog(
