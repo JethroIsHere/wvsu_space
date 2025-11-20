@@ -249,8 +249,10 @@ class _ChatLobbyScreenState extends State<ChatLobbyScreen> {
     final items = List<_Interest>.from(_interests);
 
     // Ensure "Add Custom" tile is last
+    // Add bottom padding so the last row (including "Add Custom") sits
+    // visually above the sticky Find Match / Start Chat button.
     return GridView.builder(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 4, bottom: 92),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         mainAxisSpacing: 12,

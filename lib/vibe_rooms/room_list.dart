@@ -220,7 +220,7 @@ class _RoomListScreenState extends State<RoomListScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Themed Rooms',
+                              'Vibe Rooms',
                               style: textTheme.headlineLarge?.copyWith(
                                 color: Colors.white,
                               ),
