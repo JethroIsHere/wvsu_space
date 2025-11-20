@@ -137,17 +137,41 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
                   child: const Text('Continue'),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton(
-                  style: outlinedButtonStyle,
-                  onPressed: () {
-                    // Skip to the last page (index 3)
-                    _pageController.animateToPage(
-                      3,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeIn,
-                    );
-                  },
-                  child: const Text('Skip'),
+                // Use a feedback-disabled InkWell to avoid platform feedback
+                // causing crashes in some environments.
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: Theme.of(context).colorScheme.primary),
+                  ),
+                  child: InkWell(
+                    enableFeedback: false,
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      // Skip to the last page (index 3)
+                      _pageController.animateToPage(
+                        3,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeIn,
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: Text(
+                          'Skip',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ] else ...[
                 // --- Page 4 Buttons ---
