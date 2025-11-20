@@ -23,7 +23,7 @@ class BottomNav extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _NavItem(
-                icon: Icons.chat_bubble,
+                icon: Icons.chat_bubble_outline,
                 label: 'Chat',
                 selected: currentIndex == 0,
                 selectedColor: colorScheme.primary,
@@ -53,9 +53,9 @@ class BottomNav extends StatelessWidget {
                 onTap: onIndexChanged != null
                     ? () => onIndexChanged!(3)
                     : () => Navigator.pushNamed(
-                        context,
-                        AppRouter.communityStanding,
-                      ),
+                          context,
+                          AppRouter.communityStanding,
+                        ),
               ),
             ],
           ),
