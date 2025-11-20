@@ -40,7 +40,7 @@ Campus life can be busy and a little overwhelming. WVSU Space gives you a low‑
 
 - Full chat experience: message list, composer, typing indicator, read markers
 - Safety tools: report a chat, post‑chat rating, and admin review hooks
-- Themed Rooms (join ongoing groups by topic)
+- Vibe Rooms (join ongoing groups by topic)
 - Gratitude Wall (share something positive), Community Standing, Profiles & Settings
 - Firestore security rules and emulator tests
 - Admin portal (web) for moderation basics
