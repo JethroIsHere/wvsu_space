@@ -212,10 +212,12 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
       }
       debugPrint(
           'backfillMissingExpires: updates=$updates skipped=${skipped.length}');
-      if (skipped.isNotEmpty)
+      if (skipped.isNotEmpty) {
         debugPrint('backfillMissingExpires: skipped details: $skipped');
-      if (updatedIds.isNotEmpty)
+      }
+      if (updatedIds.isNotEmpty) {
         debugPrint('backfillMissingExpires: updating ids: $updatedIds');
+      }
       if (updates > 0) {
         await batch.commit();
       }
