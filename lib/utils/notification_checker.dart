@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../widgets/app_button.dart';
 
 class NotificationChecker {
   /// Check if user has unacknowledged warnings and show dialog
@@ -183,7 +184,7 @@ class NotificationChecker {
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Dismiss'),
           ),
-          ElevatedButton(
+          AppButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('View All Notifications'),
           ),

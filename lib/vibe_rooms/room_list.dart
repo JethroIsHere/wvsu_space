@@ -340,14 +340,24 @@ class _RoomListScreenState extends State<RoomListScreen>
                       return RoomCard(
                         room: r,
                         onJoin: () async {
-                          await VibeRoomsRepository.joinRoom(r.roomId);
-                          if (context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      RoomChatScreen(roomId: r.roomId)),
-                            );
+                          try {
+                            await VibeRoomsRepository.joinRoom(r.roomId);
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        RoomChatScreen(roomId: r.roomId)),
+                              );
+                            }
+                          } catch (e, st) {
+                            debugPrint('Failed to join room: $e\n$st');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Failed to join room: $e')),
+                              );
+                            }
                           }
                         },
                       );
