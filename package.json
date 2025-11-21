@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "firebase-admin": "^13.6.0",
     "minimist": "^1.2.8"
   },
   "name": "wvsu_space",
@@ -13,7 +12,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:rules": "node scripts/test_firestore_rules.js"
   },
   "repository": {
     "type": "git",
@@ -26,5 +26,9 @@
   "bugs": {
     "url": "https://github.com/JethroIsHere/wvsu_space/issues"
   },
-  "homepage": "https://github.com/JethroIsHere/wvsu_space#readme"
+  "homepage": "https://github.com/JethroIsHere/wvsu_space#readme",
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase-admin": "^13.6.0"
+  }
 }

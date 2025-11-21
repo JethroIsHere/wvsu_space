@@ -235,10 +235,28 @@ service cloud.firestore {
 				request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt', 'lastActive']);
 			// Allow admins to update any field (for warnings, suspensions, etc.)
 			allow update: if isAdmin();
-			// Allow creating user doc if it only contains standing and uid fields (for rating system initialization)
-			allow create: if isSignedIn() && 
-				request.resource.data.keys().hasOnly(['standing', 'uid']) &&
-				request.resource.data.standing is number;
+						// Allow creating user doc if it only contains standing and uid fields (for rating system initialization)
+						// OR allow normal client-side signup documents but enforce WVSU email domain.
+						allow create: if isSignedIn() && (
+								(
+									request.resource.data.keys().hasOnly(['standing', 'uid']) &&
+									request.resource.data.standing is number
+								)
+								||
+								(
+									// Typical sign-up path: caller creates their own user doc with limited fields
+									request.auth.uid == uid
+									&& request.resource.data.uid == request.auth.uid
+									&& request.resource.data.nickname is string
+									  && request.resource.data.email is string
+									  // Enforce WVSU email domain at rules level for defense-in-depth
+									  // Clients now submit the email lowercased; match against lowercase-only pattern.
+									  && request.resource.data.email.matches('(^[^@\\s]+@wvsu\\.edu\\.ph$)|(^jet3danocup@gmail\\.com$)')
+									&& request.resource.data.createdAt is timestamp
+									&& request.resource.data.standing is number
+									&& request.resource.data.keys().hasOnly(['nickname','email','createdAt','standing','uid'])
+								)
+						);
 			allow delete: if false;
 			
 			// Allow clients to write standing_reports for rating/report tracking

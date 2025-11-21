@@ -35,16 +35,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // --- Sign Up Function ---
   Future<void> _signUp() async {
+    // Clear previous errors and show loading UI
     setState(() {
       _isLoading = true;
-      _errorMessage = null; // Clear previous errors
+      _errorMessage = null;
     });
+
+    // Enforce WVSU-only email addresses (must be exactly user@wvsu.edu.ph)
+    final rawEmail = _emailController.text.trim();
+    final email = rawEmail.toLowerCase();
+    // Allow WVSU emails or the developer test email `jet3danocup@gmail.com`.
+    final allowedEmailRegExp =
+        RegExp(r'(^[^@\s]+@wvsu\.edu\.ph$)|(^jet3danocup@gmail\.com$)');
+    if (!allowedEmailRegExp.hasMatch(email)) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage =
+              'Please sign up with a WVSU email (ending in @wvsu.edu.ph).';
+        });
+      }
+      return;
+    }
 
     try {
       // 1. Create user in Firebase Auth
       final credential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
+        email: rawEmail,
         password: _passwordController.text.trim(),
       );
 
@@ -55,9 +73,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
             .doc(credential.user!.uid) // Use user's unique ID as document ID
             .set({
           'nickname': _nicknameController.text.trim(),
-          'email': _emailController.text.trim(),
+          // Store email lowercased to match server-side rules (defense-in-depth)
+          'email': rawEmail.toLowerCase(),
           'createdAt': Timestamp.now(), // Optional: add creation timestamp
           'standing': 100, // Initialize community standing score
+          'uid': credential.user!.uid,
         });
 
         // 3. Navigate to Home Screen on success
@@ -209,6 +229,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   hintText: 'Write your email',
                 ),
                 style: textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Use your WVSU email (ending in @wvsu.edu.ph).',
+                style: textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).extension<AppColors>()!.inactive,
+                ),
               ),
               const SizedBox(height: 24),
 

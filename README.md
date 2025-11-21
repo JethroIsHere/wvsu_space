@@ -9,6 +9,7 @@ Campus life can be busy and a little overwhelming. WVSU Space gives you a low‑
 ## What you can do
 
 - Sign up or log in with your email and password
+ - Sign up or log in with your email and password (only WVSU emails ending in `@wvsu.edu.ph` are accepted)
 - Turn on “Remember me” so your email is filled in next time
 - Forgot your password? Send yourself a reset link instantly
 - Quick Chat: let the app find you a random partner
