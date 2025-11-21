@@ -368,6 +368,95 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
                 const SizedBox(height: 24),
 
+                // Quick access list for admins: show recent / alphabetical users
+                Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Quick Access',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700, fontSize: 16)),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 220,
+                          child: StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .orderBy('nickname')
+                                .limit(20)
+                                .snapshots(),
+                            builder: (context, snap) {
+                              if (snap.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                    child: CircularProgressIndicator());
+                              }
+                              if (!snap.hasData || snap.data!.docs.isEmpty) {
+                                return Center(
+                                  child: Text(
+                                    'No users to show',
+                                    style:
+                                        TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                );
+                              }
+
+                              return ListView.separated(
+                                padding: const EdgeInsets.all(4),
+                                itemCount: snap.data!.docs.length,
+                                separatorBuilder: (_, __) => const Divider(),
+                                itemBuilder: (context, i) {
+                                  final doc = snap.data!.docs[i];
+                                  final data =
+                                      doc.data() as Map<String, dynamic>? ?? {};
+                                  final nickname =
+                                      (data['nickname'] as String?) ?? '';
+                                  return ListTile(
+                                    onTap: () {
+                                      // select this user as the searched user
+                                      setState(() {
+                                        _foundUser = {'uid': doc.id, ...data};
+                                        _hasSearched = true;
+                                        // only populate search field with nickname to
+                                        // avoid exposing student IDs in the UI
+                                        if (nickname.isNotEmpty) {
+                                          _searchController.text = nickname;
+                                        }
+                                        _searchError = null;
+                                      });
+                                    },
+                                    leading: CircleAvatar(
+                                      backgroundColor: Colors.grey.shade200,
+                                      child: Text(
+                                        (nickname.isNotEmpty
+                                                ? nickname[0]
+                                                : '?')
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                            color: Colors.black87),
+                                      ),
+                                    ),
+                                    title: Text(nickname.isNotEmpty
+                                        ? nickname
+                                        : '(no nickname)'),
+                                    trailing: const Icon(Icons.chevron_right),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 // User result or empty state
                 if (_hasSearched && _foundUser != null)
                   _UserProfileCard(userData: _foundUser!)
@@ -463,8 +552,7 @@ class _UserProfileCard extends StatefulWidget {
 }
 
 class _UserProfileCardState extends State<_UserProfileCard> {
-  int _reportCount = 0;
-  bool _loadingReports = true;
+  // report counts removed from UI; no longer tracked here
   late Map<String, dynamic> _currentUserData;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userSub;
 
@@ -472,7 +560,6 @@ class _UserProfileCardState extends State<_UserProfileCard> {
   void initState() {
     super.initState();
     _currentUserData = widget.userData;
-    _fetchReportCount();
     _listenToUser();
   }
 
@@ -507,29 +594,6 @@ class _UserProfileCardState extends State<_UserProfileCard> {
   void dispose() {
     _userSub?.cancel();
     super.dispose();
-  }
-
-  Future<void> _fetchReportCount() async {
-    try {
-      final uid = _currentUserData['uid'] as String;
-      final reportsQuery = await FirebaseFirestore.instance
-          .collection('user_reports')
-          .where('reportedUserId', isEqualTo: uid)
-          .get();
-
-      if (mounted) {
-        setState(() {
-          _reportCount = reportsQuery.docs.length;
-          _loadingReports = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loadingReports = false;
-        });
-      }
-    }
   }
 
   Future<void> _refreshUserData() async {
@@ -584,7 +648,6 @@ class _UserProfileCardState extends State<_UserProfileCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final nickname = _currentUserData['nickname'] as String? ?? 'Unknown';
-    final studentId = _currentUserData['studentId'] as String? ?? '—';
     // The field is called 'standing' not 'score'
     final standingRaw = (_currentUserData['standing'] ??
         _currentUserData['score'] ??
@@ -688,14 +751,7 @@ class _UserProfileCardState extends State<_UserProfileCard> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'ID: $studentId',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 6),
                       Text(
                         'UID: $uid',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -720,12 +776,6 @@ class _UserProfileCardState extends State<_UserProfileCard> {
                     label: 'Current Score',
                     value: '$score',
                     valueColor: _getScoreColor(score.toDouble()),
-                  ),
-                ),
-                Expanded(
-                  child: _InfoColumn(
-                    label: 'Reports',
-                    value: _loadingReports ? '...' : '$_reportCount',
                   ),
                 ),
               ],
