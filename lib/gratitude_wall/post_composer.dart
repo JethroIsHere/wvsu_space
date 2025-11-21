@@ -86,21 +86,27 @@ class _PostComposerState extends State<PostComposer> {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Gratitude'),
-                        selected: _type == 'gratitude',
-                        onSelected: (v) => setState(() => _type = 'gratitude'),
-                      ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        label: const Text('Express'),
-                        selected: _type == 'express',
-                        onSelected: (v) => setState(() => _type = 'express'),
-                      ),
-                    ],
+                // Make the chips horizontally scrollable to avoid overflow on
+                // small/mobile screens while keeping the close button pinned.
+                Flexible(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Gratitude'),
+                          selected: _type == 'gratitude',
+                          onSelected: (v) =>
+                              setState(() => _type = 'gratitude'),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text('Express'),
+                          selected: _type == 'express',
+                          onSelected: (v) => setState(() => _type = 'express'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 IconButton(
