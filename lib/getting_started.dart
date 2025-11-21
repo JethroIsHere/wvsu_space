@@ -191,16 +191,14 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
                   child: const Text('Sign Up'),
                 ),
                 const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    // Open dedicated Admin login screen
-                    Navigator.pushNamed(context, AppRouter.adminLogin);
-                  },
-                  child: Text(
-                    'Admin Access',
-                    // Using your "Log In Text Hint" style
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                // Hidden long-press target for Admin access. This keeps the admin
+                // flow bundled but invisible to ordinary users. Long-press this
+                // area to open the admin login.
+                GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onLongPress: () =>
+                      Navigator.pushNamed(context, AppRouter.adminLogin),
+                  child: const SizedBox(height: 24, width: double.infinity),
                 ),
               ],
               const SizedBox(height: 16), // Bottom padding

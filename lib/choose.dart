@@ -80,14 +80,14 @@ class ChooseScreen extends StatelessWidget {
                 child: const Text('Sign Up'),
               ),
               const SizedBox(height: 16),
-              TextButton(
-                onPressed: () =>
+              // Hidden long-press target for Admin access.
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onLongPress: () =>
                     Navigator.pushNamed(context, AppRouter.adminLogin),
-                child: Text(
-                  'Admin Access',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                child: const SizedBox(height: 24, width: double.infinity),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),

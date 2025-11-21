@@ -86,8 +86,8 @@ class _NavItem extends StatelessWidget {
       children: [
         TweenAnimationBuilder<Color?>(
           tween: ColorTween(
-            begin: Colors.black54,
-            end: selected ? Colors.white : Colors.black54,
+            begin: Colors.black,
+            end: selected ? Colors.white : Colors.black,
           ),
           duration: const Duration(milliseconds: 220),
           builder: (context, color, _) => Icon(icon, color: color, size: 20),
@@ -97,7 +97,7 @@ class _NavItem extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           style: TextStyle(
             fontSize: 12,
-            color: selected ? Colors.white : Colors.black54,
+            color: selected ? Colors.white : Colors.black,
           ),
           child: Text(label),
         ),
