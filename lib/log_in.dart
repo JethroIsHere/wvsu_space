@@ -40,10 +40,27 @@ class _LogInScreenState extends State<LogInScreen> {
       _errorMessage = null; // Clear previous errors
     });
 
+    // Enforce WVSU-only email addresses before attempting sign-in
+    final rawEmail = _emailController.text.trim();
+    final emailLower = rawEmail.toLowerCase();
+    // Allow WVSU emails or the developer test email `jet3danocup@gmail.com`.
+    final allowedEmailRegExp =
+        RegExp(r'(^[^@\s]+@wvsu\.edu\.ph$)|(^jet3danocup@gmail\.com$)');
+    if (!allowedEmailRegExp.hasMatch(emailLower)) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage =
+              'Please sign in with a WVSU email (ending in @wvsu.edu.ph).';
+        });
+      }
+      return;
+    }
+
     try {
       // 1. Sign in user with Firebase Auth
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
+        email: rawEmail,
         password: _passwordController.text.trim(),
       );
 
@@ -132,16 +149,27 @@ class _LogInScreenState extends State<LogInScreen> {
   }
 
   Future<void> _sendPasswordReset() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
+    final rawEmail = _emailController.text.trim();
+    if (rawEmail.isEmpty) {
       setState(
-        () => _errorMessage = 'Enter your email to reset your password.',
-      );
+          () => _errorMessage = 'Enter your email to reset your password.');
       return;
     }
+
+    // Enforce WVSU-only email addresses for password reset
+    final emailLower = rawEmail.toLowerCase();
+    // Allow WVSU emails or the developer test email `jet3danocup@gmail.com`.
+    final allowedEmailRegExp =
+        RegExp(r'(^[^@\s]+@wvsu\.edu\.ph$)|(^jet3danocup@gmail\.com$)');
+    if (!allowedEmailRegExp.hasMatch(emailLower)) {
+      setState(() => _errorMessage =
+          'Password reset is only available for WVSU emails (ending in @wvsu.edu.ph).');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: rawEmail);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -252,6 +280,13 @@ class _LogInScreenState extends State<LogInScreen> {
                   hintText: 'Write your email',
                 ),
                 style: textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Sign in with your WVSU email (ending in @wvsu.edu.ph).',
+                style: textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).extension<AppColors>()!.inactive,
+                ),
               ),
               const SizedBox(height: 24),
 
