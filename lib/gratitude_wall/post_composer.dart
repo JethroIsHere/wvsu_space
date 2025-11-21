@@ -78,8 +78,7 @@ class _PostComposerState extends State<PostComposer> {
         decoration: BoxDecoration(
           color: Theme.of(context).dialogTheme.backgroundColor ??
               Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -87,16 +86,27 @@ class _PostComposerState extends State<PostComposer> {
           children: [
             Row(
               children: [
-                ChoiceChip(
-                  label: const Text('Gratitude'),
-                  selected: _type == 'gratitude',
-                  onSelected: (v) => setState(() => _type = 'gratitude'),
+                Expanded(
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Gratitude'),
+                        selected: _type == 'gratitude',
+                        onSelected: (v) => setState(() => _type = 'gratitude'),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('Express'),
+                        selected: _type == 'express',
+                        onSelected: (v) => setState(() => _type = 'express'),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Express'),
-                  selected: _type == 'express',
-                  onSelected: (v) => setState(() => _type = 'express'),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Close',
                 ),
               ],
             ),

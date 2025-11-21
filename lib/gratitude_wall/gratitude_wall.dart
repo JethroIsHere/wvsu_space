@@ -145,17 +145,8 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
         debugPrint('Cleanup failed: $e');
       }
 
+      // no UI pop-up on refresh per UX request; keep logs for debugging
       if (!mounted) return;
-      final parts = <String>[];
-      if (backfilled > 0) parts.add('Backfilled $backfilled posts');
-      parts.add(deleted > 0
-          ? 'Removed $deleted expired posts.'
-          : 'No expired posts found.');
-      // For debugging: include a hint about checking console/logs
-      parts.add('See logs for matched/skipped doc IDs.');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(parts.join(', '))),
-      );
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
     }
@@ -288,15 +279,26 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
   }
 
   Future<void> _openComposer() async {
-    final result = await showModalBottomSheet<bool>(
+    final result = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => const PostComposer(),
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+        backgroundColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(child: PostComposer()),
+          ),
+        ),
+      ),
     );
     if (result == true) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Posted')));
+        // keep quiet; use in-line list updates instead of popups
       }
     }
   }
@@ -651,10 +653,16 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: null,
-        onPressed: _openComposer,
-        child: const Icon(Icons.add),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        // match Vibe Rooms: raise FAB so it overlaps less with list items
+        padding: const EdgeInsets.only(bottom: 40.0),
+        child: FloatingActionButton(
+          heroTag: null,
+          backgroundColor: Colors.green,
+          onPressed: _openComposer,
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
