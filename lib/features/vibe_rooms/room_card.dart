@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/models.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/styles.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/utils.dart';
+import 'package:wvsu_space/features/vibe_rooms/models.dart';
+import 'package:wvsu_space/features/vibe_rooms/styles.dart';
+import 'package:wvsu_space/features/vibe_rooms/utils.dart';
 import 'package:wvsu_space/widgets/app_button.dart';
 
 class RoomCard extends StatelessWidget {

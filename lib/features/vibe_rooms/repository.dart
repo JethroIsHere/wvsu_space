@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/models.dart';
+import 'package:wvsu_space/features/vibe_rooms/models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';

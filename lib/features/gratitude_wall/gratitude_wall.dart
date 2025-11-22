@@ -5,9 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wvsu_space/router/app_router.dart';
 
-import 'package:wvsu_space/features/gratitude_wall/gratitude_wall/models.dart';
-import 'package:wvsu_space/features/gratitude_wall/gratitude_wall/post_tile.dart';
-import 'package:wvsu_space/features/gratitude_wall/gratitude_wall/post_composer.dart';
+import 'package:wvsu_space/features/gratitude_wall/models.dart';
+import 'package:wvsu_space/features/gratitude_wall/post_tile.dart';
+import 'package:wvsu_space/features/gratitude_wall/post_composer.dart';
 
 class GratitudeWallScreen extends StatefulWidget {
   const GratitudeWallScreen({super.key});

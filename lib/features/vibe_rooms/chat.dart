@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/repository.dart';
+import 'package:wvsu_space/features/vibe_rooms/repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/models.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/message_bubble.dart';
+import 'package:wvsu_space/features/vibe_rooms/models.dart';
+import 'package:wvsu_space/features/vibe_rooms/message_bubble.dart';
 import 'package:wvsu_space/widgets/app_button.dart';
 
 class RoomChatScreen extends StatefulWidget {

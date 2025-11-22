@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/repository.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/chat.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/utils.dart';
+import 'package:wvsu_space/features/vibe_rooms/repository.dart';
+import 'package:wvsu_space/features/vibe_rooms/chat.dart';
+import 'package:wvsu_space/features/vibe_rooms/utils.dart';
 
 /// Simple mood selector that demonstrates entry points for the Vibe Rooms feature.
 class VibeRoomSelector extends StatelessWidget {

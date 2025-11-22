@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/repository.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/utils.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/chat.dart';
+import 'package:wvsu_space/features/vibe_rooms/repository.dart';
+import 'package:wvsu_space/features/vibe_rooms/utils.dart';
+import 'package:wvsu_space/features/vibe_rooms/chat.dart';
 import 'package:wvsu_space/widgets/app_button.dart';
 
 class AddRoomDialog extends StatefulWidget {

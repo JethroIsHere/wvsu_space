@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/repository.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/chat.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/room_card.dart';
-import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/models.dart';
+import 'package:wvsu_space/features/vibe_rooms/repository.dart';
+import 'package:wvsu_space/features/vibe_rooms/chat.dart';
+import 'package:wvsu_space/features/vibe_rooms/room_card.dart';
+import 'package:wvsu_space/features/vibe_rooms/models.dart';
 import 'package:wvsu_space/router/app_router.dart';
 
 class RoomListScreen extends StatefulWidget {

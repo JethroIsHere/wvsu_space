@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:wvsu_space/features/gratitude_wall/gratitude_wall/models.dart';
+import 'package:wvsu_space/features/gratitude_wall/models.dart';
 
 class PostTile extends StatefulWidget {
   final GratitudePost post;
