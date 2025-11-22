@@ -1,3 +1,4 @@
+// Manage Vibe Rooms: keep rooms/messages in memory, sync with Firestore, track presence or user activity.
 import 'dart:async';
 import 'dart:math';
 import 'package:wvsu_space/features/vibe_rooms/models.dart';
@@ -5,8 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// In-memory repository that simulates rooms and messages so the UI works
-/// without Firestore. Replace with Firestore logic later when ready.
+// Keeps rooms and messages in memory and syncs with Firestore when available.
 class VibeRoomsRepository {
   static final Map<String, VibeRoom> _rooms = {};
   static final Map<String, List<VibeMessage>> _messages = {};
@@ -34,8 +34,7 @@ class VibeRoomsRepository {
       return;
     }
     _initialized = true;
-    // Do not seed placeholder/example rooms in the app by default.
-    // Emit an initial empty list so the UI shows only rooms created by users.
+    // It starts empty as users are the ones who create the rooms. No default rooms active.
     _rooms.clear();
     _messages.clear();
     _messagesControllers.clear();
@@ -44,8 +43,7 @@ class VibeRoomsRepository {
     _initFirestoreListener();
   }
 
-  /// Try to resolve a friendly display name for a user id.
-  /// Checks `/users/{uid}` then `/vibe_rooms/{roomId}/presence/{uid}` as a fallback.
+  // Try profile first, then presence; return 'Anonymous' if not found.
   static Future<String> _resolveNickname(String uid) async {
     try {
       final userDoc =
@@ -60,7 +58,7 @@ class VibeRoomsRepository {
       }
     } catch (_) {}
 
-    // Try presence lookup across rooms is expensive; we fallback to 'Anonymous'.
+    // Presence lookup can be slow; fallback to 'Anonymous' on failure.
     try {
       final pres = await FirebaseFirestore.instance
           .collectionGroup('presence')
@@ -84,7 +82,7 @@ class VibeRoomsRepository {
     _firestoreListening = true;
     try {
       final coll = FirebaseFirestore.instance.collection('vibe_rooms');
-      // Quick permission check
+      // Quick read check for the rooms collection
       try {
         await coll.limit(1).get();
       } catch (e) {
@@ -95,7 +93,7 @@ class VibeRoomsRepository {
         return;
       }
 
-      // Listen for remote updates and replace the in-memory store atomically.
+      // Listen for remote updates and update the in-memory store.
       coll.snapshots().listen((snap) {
         final Map<String, VibeRoom> newRooms = {};
         final Set<String> incomingIds = <String>{};
@@ -135,11 +133,11 @@ class VibeRoomsRepository {
           newRooms[d.id] = room;
         }
 
-        // Detect removed rooms and clean up their resources.
+        // Remove rooms deleted remotely and clean up their resources.
         final removed =
             _rooms.keys.where((k) => !incomingIds.contains(k)).toList();
         for (final rid in removed) {
-          // Remove messages controllers
+          // Remove message controllers
           try {
             final ctl = _messagesControllers.remove(rid);
             ctl?.close();
@@ -165,7 +163,7 @@ class VibeRoomsRepository {
           _rooms.remove(rid);
         }
 
-        // Merge/add new rooms
+        // Merge new or updated rooms into memory.
         for (final entry in newRooms.entries) {
           _rooms[entry.key] = entry.value;
         }
@@ -187,16 +185,13 @@ class VibeRoomsRepository {
     _roomsController.add(_rooms.values.toList());
   }
 
-  /// Stream of available rooms (simulated)
+  // Stream of rooms (in-memory plus Firestore updates).
   static Stream<List<VibeRoom>> roomsStream() {
     _ensureInit();
-    // Always return the in-memory controller stream. Firestore updates are
-    // merged into the in-memory store by `_initFirestoreListener`, so the
-    // UI sees a single unified source (local + remote).
     return _roomsController.stream;
   }
 
-  /// Get a room by id, try in-memory first then fall back to Firestore fetch.
+  // Get a room by id: check memory first, then Firestore.
   static Future<VibeRoom?> getRoom(String roomId) async {
     _ensureInit();
     final existing = _rooms[roomId];
@@ -254,7 +249,7 @@ class VibeRoomsRepository {
     }
   }
 
-  /// Create a new room (in-memory)
+  // Create a new room locally and try to persist it to Firestore.
   static Future<String> createRoom({
     required String mood,
     required String title,
@@ -282,7 +277,7 @@ class VibeRoomsRepository {
     _messagesControllers[id] = StreamController<List<VibeMessage>>.broadcast();
     _participants[id] = <String>{creatorUid};
     _emitRooms();
-    // Also persist to Firestore so other users/devices can see the room.
+    // Also persist to Firestore so other users/devices can see the room since that's the whole point of the feature.
     try {
       final doc = FirebaseFirestore.instance.collection('vibe_rooms').doc(id);
       await doc.set({
@@ -304,7 +299,7 @@ class VibeRoomsRepository {
     return id;
   }
 
-  /// Find an existing room by mood or create a new one
+  // Create a room with a mood in mind or join a currently active vibe room.
   static Future<String> findOrCreateVibeRoom(String mood) async {
     _ensureInit();
     try {
@@ -316,7 +311,7 @@ class VibeRoomsRepository {
         mood: mood, title: '${mood[0].toUpperCase()}${mood.substring(1)} Room');
   }
 
-  /// Join a room (increments participant count and emits update)
+  // Join a room and update participant lists.
   static Future<void> joinRoom(String roomId, {String userId = 'me'}) async {
     _ensureInit();
     var room = _rooms[roomId];
@@ -383,16 +378,13 @@ class VibeRoomsRepository {
       room.participantCount = _participants[roomId]!.length;
       _rooms[roomId] = room;
       _emitRooms();
-      // add a system join message using the user's nickname when possible
+      // Add a system message announcing the join.
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
       final isLocal = currentUid != null && actualUserId == currentUid;
-      // Resolve a real display name for the joining user. For local user we use
-      // the current user's displayName if available; for others try user doc or
-      // presence doc, otherwise fall back to 'Anonymous'.
+      // Use the joining user's nickname at all times; fallback to 'Anonymous' when error occurs.
       String resolvedName;
       String persistedName;
       if (isLocal) {
-        // Prefer a nickname stored in the users collection (profile)
         String? localNick;
         try {
           final doc = await FirebaseFirestore.instance
@@ -410,7 +402,8 @@ class VibeRoomsRepository {
           resolvedName = currentDisplay;
           persistedName = currentDisplay;
         } else {
-          // generate a local nickname and persist it in presence
+          // Generate a local nickname when none exists.
+          // This is temporary only, and as added trust to other users since nicknames are visible in the vibe rooms by default.
           final gen = 'User${Random().nextInt(9000) + 1000}';
           resolvedName = gen;
           persistedName = gen;
@@ -420,10 +413,10 @@ class VibeRoomsRepository {
         persistedName = resolvedName;
       }
 
-      // Persist a system-typed message authored by the joining user so it passes rules
+      // Add a system message announcing the join.
       await sendMessage(roomId, actualUserId, '$resolvedName joined the room',
           senderNickname: persistedName, isSystem: true);
-      // Update Firestore if possible using a transaction to avoid races
+      // Try to increment participant count in Firestore using a transaction.
       try {
         final docRef =
             FirebaseFirestore.instance.collection('vibe_rooms').doc(roomId);
@@ -441,7 +434,7 @@ class VibeRoomsRepository {
         debugPrint(
             'VibeRoomsRepository.joinRoom: Firestore transaction failed: $e');
       }
-      // Start presence tracking for this user in the room
+      // Start presence tracking (heartbeat) for this user.
       try {
         _startPresenceTracking(roomId, actualUserId, displayName: resolvedName);
       } catch (e) {
@@ -460,9 +453,10 @@ class VibeRoomsRepository {
           ? FirebaseAuth.instance.currentUser?.uid ?? 'me'
           : userId;
 
-      // If the leaving user is the owner, disband the room immediately for all users.
+      // If the leaving user is the owner, disband the room for all users.
+      // The rooms have no time limit but depends on the creator.
       if (room.ownerUid != null && actualUserId == room.ownerUid) {
-        // Remove in-memory state and cancel listeners/timers
+        // Remove in-memory state and cancel listeners/timers.
         _rooms.remove(roomId);
         _messages.remove(roomId);
         final ctl = _messagesControllers.remove(roomId);
@@ -488,13 +482,8 @@ class VibeRoomsRepository {
         try {
           final docRef =
               FirebaseFirestore.instance.collection('vibe_rooms').doc(roomId);
-          // Presence docs are owned by individual users and cannot be
-          // deleted reliably from client code (permission rules prevent it).
-          // We skip attempting to delete presence docs here.
-
-          // Run heavy deletion work in the background so the UI leave flow
-          // isn't blocked and we avoid race conditions between removal and
-          // listeners that may still be active on the client.
+          // Presence docs may not be deletable by clients.
+          // Run deletion in the background so the UI isn't blocked.
           () async {
             try {
               try {
@@ -519,7 +508,7 @@ class VibeRoomsRepository {
         return;
       }
       if (set.isEmpty) {
-        // disband room
+        // Disband room locally.
         _rooms.remove(roomId);
         _messages.remove(roomId);
         final ctl = _messagesControllers.remove(roomId);
@@ -585,13 +574,14 @@ class VibeRoomsRepository {
     }
   }
 
-  /// Deletes all messages under a room in batches. Client-side fallback for recursive delete.
+  /// This is to delete all messages under a room in batches (used when cleaning up).
   static Future<void> _deleteRoomMessages(String roomId) async {
     final coll = FirebaseFirestore.instance
         .collection('vibe_rooms')
         .doc(roomId)
         .collection('messages');
-    const batchSize = 400; // stay below 500 write limit
+    const batchSize =
+        400; // stay below 500 write limit so that it stays in a safe range of deletion.!
     while (true) {
       final snap = await coll.limit(batchSize).get();
       if (snap.docs.isEmpty) break;
@@ -605,15 +595,13 @@ class VibeRoomsRepository {
     }
   }
 
-  /// Stream messages for a room
+  /// This is to stream messages for a given room (keeps in-memory + attaches Firestore listener if possible)
   static Stream<List<VibeMessage>> messagesStream(String roomId) {
     _ensureInit();
     _messagesControllers.putIfAbsent(
         roomId, () => StreamController<List<VibeMessage>>.broadcast());
 
-    // If we don't yet have a Firestore listener for this room's messages,
-    // attempt to attach one. On permission errors we'll log and continue
-    // using the in-memory messages only.
+    // If no Firestore listener exists yet, try to attach one. If permissions fail, keep using in-memory messages.
     if (!_messageSubscriptions.containsKey(roomId)) {
       try {
         final coll = FirebaseFirestore.instance
@@ -649,9 +637,7 @@ class VibeRoomsRepository {
               isSystem: (data['isSystem'] as bool?) ?? false,
             );
           }).toList();
-          // For messages that don't include a useful senderNickname, attempt
-          // to resolve the user's nickname in the background and update the
-          // in-memory list so the UI can refresh with the resolved name.
+          // If a message lacks a nickname, try to resolve it in the background, then update the in-memory list.
           for (final m in List<VibeMessage>.from(msgs)) {
             if ((m.senderNickname.isEmpty || m.senderNickname == 'Anonymous') &&
                 m.senderId != 'system') {
@@ -691,10 +677,8 @@ class VibeRoomsRepository {
     return _messagesControllers[roomId]!.stream;
   }
 
-  /// Start presence tracking for the given room and user.
-  /// Writes a presence doc under `vibe_rooms/{roomId}/presence/{uid}` and
-  /// keeps it updated with a periodic heartbeat. Also listens to presence
-  /// changes to compute active participants and update the room accordingly.
+  /// This is to track user presence for a room. Write a presence doc and update it periodically.
+  /// Also listen for presence changes to update active participant counts.
   static Future<void> _startPresenceTracking(String roomId, String uid,
       {String? displayName}) async {
     _presenceTimers[roomId]?.cancel();
@@ -716,7 +700,7 @@ class VibeRoomsRepository {
       debugPrint('VibeRoomsRepository._startPresenceTracking: set failed: $e');
     }
 
-    // Periodic heartbeat
+    // Heartbeat: update presence every 20 seconds
     _presenceTimers[roomId] =
         Timer.periodic(const Duration(seconds: 20), (_) async {
       try {
@@ -728,7 +712,7 @@ class VibeRoomsRepository {
       }
     });
 
-    // Listen for presence docs and compute active participants
+    // Listen for presence changes and compute who is active
     _presenceSubscriptions[roomId] =
         presenceColl.snapshots().listen((snap) async {
       final now = DateTime.now();
@@ -745,7 +729,7 @@ class VibeRoomsRepository {
           }
         } catch (_) {}
         final age = now.difference(lastSeen).inSeconds;
-        // If stale, don't attempt to delete (clients may not have permission).
+        // Ignore stale presence records.
         if (age > 40) continue;
         active.add(d.id);
       }
@@ -758,7 +742,7 @@ class VibeRoomsRepository {
       }
       _emitRooms();
 
-      // Update the room document's participant list/count to match active set
+      // Try to update remote room doc with active participants.
       try {
         final docRef =
             FirebaseFirestore.instance.collection('vibe_rooms').doc(roomId);
@@ -778,14 +762,14 @@ class VibeRoomsRepository {
     });
   }
 
-  /// Return current participant count for a room
+  // Return current participant count for a room.
   static int participantCountFor(String roomId) {
     return _participants[roomId]?.length ??
         _rooms[roomId]?.participantCount ??
         0;
   }
 
-  /// Whether the given user is the last participant in the room
+  // Check if the given user is the only remaining participant.
   static bool isUserLastParticipant(String roomId, String userId) {
     final set = _participants[roomId];
     if (set == null) return false;
@@ -795,16 +779,15 @@ class VibeRoomsRepository {
     return set.length == 1 && set.contains(actualUserId);
   }
 
-  /// Send a message to a room
+  // Send a message locally and try to persist it to Firestore.
   static Future<void> sendMessage(String roomId, String senderId, String text,
       {String? senderNickname, bool isSystem = false}) async {
     _ensureInit();
     final actualSenderId = senderId == 'me'
         ? FirebaseAuth.instance.currentUser?.uid ?? 'me'
         : senderId;
-    // Compute a persisted nickname (what is stored in Firestore) and a
-    // display nickname used for the in-memory message object. We avoid
-    // persisting the literal 'You' so other clients see the real name.
+    // Choose persisted and display nicknames (show 'You' locally).
+    // This is to inform the user, that that message belongs to them.
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final currentDisplayName = FirebaseAuth.instance.currentUser?.displayName;
     final persistedNickname =
@@ -840,8 +823,7 @@ class VibeRoomsRepository {
         'senderId': msg.senderId,
         'senderNickname': persistedNickname,
         'text': msg.text,
-        // Persist a client timestamp for rules validation and quick ordering,
-        // and also record a server timestamp for canonical ordering when available.
+        // Store client timestamp and request a server timestamp.
         'timestamp': Timestamp.fromDate(msg.timestamp),
         'serverTimestamp': FieldValue.serverTimestamp(),
         'isSystem': msg.isSystem,
@@ -851,7 +833,7 @@ class VibeRoomsRepository {
     }
   }
 
-  /// Dispose controllers (not strictly necessary for the in-memory demo)
+  // Close controllers and free resources.
   static void dispose() {
     _roomsController.close();
     for (final c in _messagesControllers.values) {
