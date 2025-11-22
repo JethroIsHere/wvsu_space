@@ -494,7 +494,7 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
                       ),
                       const SizedBox(width: 8),
                       Padding(
-                        padding: const EdgeInsets.only(right: 0.0),
+                        padding: const EdgeInsets.only(right: 20.0),
                         child: Container(
                           width: 72,
                           height: 72,
@@ -504,7 +504,7 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
                           ),
                           alignment: Alignment.center,
                           child: const Icon(
-                            Icons.favorite,
+                            Icons.favorite_border,
                             color: Colors.white,
                             size: 36,
                           ),
@@ -525,7 +525,7 @@ class _GratitudeWallScreenState extends State<GratitudeWallScreen>
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 tabs: const [
-                  Tab(text: 'Gratitude', icon: Icon(Icons.favorite)),
+                  Tab(text: 'Gratitude', icon: Icon(Icons.favorite_border)),
                   Tab(text: 'Express', icon: Icon(Icons.cloud)),
                 ],
               ),

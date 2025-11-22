@@ -247,7 +247,7 @@ class _RoomListScreenState extends State<RoomListScreen>
                           ),
                           alignment: Alignment.center,
                           child: const Icon(
-                            Icons.group_rounded,
+                            Icons.forum_outlined,
                             color: Colors.white,
                             size: 36,
                           ),

@@ -58,6 +58,16 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
       side: BorderSide(color: Theme.of(context).colorScheme.primary),
     );
 
+    // Route animation drives the fade-in of text/buttons while the Hero
+    // flies the logo to its position. If the route animation is not
+    // available (tests or direct navigation), fall back to fully visible.
+    final routeAnim = ModalRoute.of(context)?.animation ??
+        AlwaysStoppedAnimation<double>(1.0) as Animation<double>;
+    final contentFade = CurvedAnimation(
+      parent: routeAnim,
+      curve: const Interval(0.45, 1.0, curve: Curves.easeIn),
+    );
+
     return Scaffold(
       backgroundColor: Theme.of(
         context,
@@ -109,99 +119,108 @@ class _GettingStartedScreenState extends State<GettingStartedScreen> {
 
               // --- Page Indicators (Dots) ---
               // Only show dots for the first 3 pages
-              if (_currentPage < 3)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (index) {
-                    return _buildPageIndicator(
-                      isActive: index == _currentPage,
-                      activeColor: Theme.of(context).colorScheme.primary,
-                      inactiveColor: appColors.inactive!,
-                    );
-                  }),
-                ),
+              FadeTransition(
+                opacity: contentFade,
+                child: Column(
+                  children: [
+                    if (_currentPage < 3)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(3, (index) {
+                          return _buildPageIndicator(
+                            isActive: index == _currentPage,
+                            activeColor: Theme.of(context).colorScheme.primary,
+                            inactiveColor: appColors.inactive!,
+                          );
+                        }),
+                      ),
 
-              const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-              // --- Buttons (Conditional) ---
-              if (_currentPage < 3) ...[
-                // --- Pages 1-3 Buttons ---
-                AppButton(
-                  style: elevatedButtonStyle,
-                  onPressed: () {
-                    _pageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeIn,
-                    );
-                  },
-                  child: const Text('Continue'),
-                ),
-                const SizedBox(height: 12),
-                // Use a feedback-disabled InkWell to avoid platform feedback
-                // causing crashes in some environments.
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: Theme.of(context).colorScheme.primary),
-                  ),
-                  child: InkWell(
-                    enableFeedback: false,
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      // Skip to the last page (index 3)
-                      _pageController.animateToPage(
-                        3,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeIn,
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: Text(
-                          'Skip',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelLarge
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
+                    // --- Buttons (Conditional) ---
+                    if (_currentPage < 3) ...[
+                      // --- Pages 1-3 Buttons ---
+                      AppButton(
+                        style: elevatedButtonStyle,
+                        onPressed: () {
+                          _pageController.nextPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeIn,
+                          );
+                        },
+                        child: const Text('Continue'),
+                      ),
+                      const SizedBox(height: 12),
+                      // Use a feedback-disabled InkWell to avoid platform feedback
+                      // causing crashes in some environments.
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Theme.of(context).colorScheme.primary),
+                        ),
+                        child: InkWell(
+                          enableFeedback: false,
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            // Skip to the last page (index 3)
+                            _pageController.animateToPage(
+                              3,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeIn,
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text(
+                                'Skip',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
                               ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    ] else ...[
+                      // --- Page 4 Buttons ---
+                      AppButton(
+                        style: elevatedButtonStyle,
+                        onPressed: () {
+                          Navigator.pushNamed(context, AppRouter.login);
+                        },
+                        child: const Text('Log In'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        style: outlinedButtonStyle,
+                        onPressed: () {
+                          Navigator.pushNamed(context, AppRouter.signUp);
+                        },
+                        child: const Text('Sign Up'),
+                      ),
+                      const SizedBox(height: 16),
+                      // Hidden long-press target for Admin access. This keeps the admin
+                      // flow bundled but invisible to ordinary users. Long-press this
+                      // area to open the admin login.
+                      GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onLongPress: () =>
+                            Navigator.pushNamed(context, AppRouter.adminLogin),
+                        child:
+                            const SizedBox(height: 24, width: double.infinity),
+                      ),
+                    ],
+                    const SizedBox(height: 16), // Bottom padding
+                  ],
                 ),
-              ] else ...[
-                // --- Page 4 Buttons ---
-                AppButton(
-                  style: elevatedButtonStyle,
-                  onPressed: () {
-                    Navigator.pushNamed(context, AppRouter.login);
-                  },
-                  child: const Text('Log In'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  style: outlinedButtonStyle,
-                  onPressed: () {
-                    Navigator.pushNamed(context, AppRouter.signUp);
-                  },
-                  child: const Text('Sign Up'),
-                ),
-                const SizedBox(height: 16),
-                // Hidden long-press target for Admin access. This keeps the admin
-                // flow bundled but invisible to ordinary users. Long-press this
-                // area to open the admin login.
-                GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onLongPress: () =>
-                      Navigator.pushNamed(context, AppRouter.adminLogin),
-                  child: const SizedBox(height: 24, width: double.infinity),
-                ),
-              ],
-              const SizedBox(height: 16), // Bottom padding
+              ),
             ],
           ),
         ),
@@ -243,26 +262,46 @@ class OnboardingPageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use the route animation to fade the textual content in as the logo
+    // completes its Hero flight. The image itself is not faded so the
+    // shared element transition remains visually prominent.
+    final routeAnim = ModalRoute.of(context)?.animation ??
+        AlwaysStoppedAnimation<double>(1.0) as Animation<double>;
+    final textFade = CurvedAnimation(
+      parent: routeAnim,
+      curve: const Interval(0.45, 1.0, curve: Curves.easeIn),
+    );
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.asset(
-          imagePath,
-          height: 150, // You can adjust the size
+        Hero(
+          tag: 'app-logo',
+          child: Image.asset(
+            imagePath,
+            height: 150, // You can adjust the size
+          ),
         ),
         const SizedBox(height: 48),
-        Text(
-          title,
-          // Using your "Getting Started Headline" style
-          style: Theme.of(context).textTheme.headlineLarge!,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          description,
-          // Using your "Getting started description" style
-          style: Theme.of(context).textTheme.bodyMedium!,
-          textAlign: TextAlign.center,
+        FadeTransition(
+          opacity: textFade,
+          child: Column(
+            children: [
+              Text(
+                title,
+                // Using your "Getting Started Headline" style
+                style: Theme.of(context).textTheme.headlineLarge!,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                description,
+                // Using your "Getting started description" style
+                style: Theme.of(context).textTheme.bodyMedium!,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ],
     );

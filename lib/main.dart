@@ -177,7 +177,7 @@ class MyApp extends StatelessWidget {
       // Wrap all routes with a global activity tracker so any screen usage updates lastActiveAt.
       builder: (context, child) => _ActivityTracker(child: child),
       // Centralized router
-      initialRoute: AppRouter.gettingStarted,
+      initialRoute: AppRouter.splash,
       onGenerateRoute: AppRouter.onGenerateRoute,
     );
   }

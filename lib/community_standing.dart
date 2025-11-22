@@ -478,7 +478,7 @@ class _CommunityStandingScreenState extends State<CommunityStandingScreen> {
                             ),
                             alignment: Alignment.center,
                             child: const Icon(
-                              Icons.sentiment_satisfied,
+                              Icons.leaderboard_outlined,
                               color: Colors.white,
                               size: 36,
                             ),

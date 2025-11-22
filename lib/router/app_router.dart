@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../getting_started.dart';
 import '../choose.dart';
+import '../splash_screen.dart';
 import '../change_password.dart';
 import '../log_in.dart';
 import '../sign_up.dart';
@@ -34,6 +35,7 @@ import '../chat_session.dart';
 class AppRouter {
   // Route names
   static const String gettingStarted = '/';
+  static const String splash = '/splash';
   static const String choose = '/choose';
   static const String changePassword = '/change-password';
   static const String login = '/login';
@@ -64,6 +66,9 @@ class AppRouter {
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case splash:
+        return _buildRoute(const SplashScreen(), settings);
+
       case gettingStarted:
         return _buildRoute(const GettingStartedScreen(), settings);
       case choose:
