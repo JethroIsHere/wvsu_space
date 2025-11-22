@@ -1,109 +1,86 @@
+
 # WVSU Space
 
-Connect with fellow WVSU students through anonymous, interest‑based 1:1 chats. Pick topics you care about, or hop into a quick random chat when you just want to talk. It’s simple, friendly, and privacy‑first.
+WVSU Space is a mobile app that helps students at Western Visayas State University (WVSU) meet online for short, meaningful, anonymous conversations. It is designed to be respectful, low-friction, and private.
 
-## Why this app exists
+Purpose
+-------
 
-Campus life can be busy and a little overwhelming. WVSU Space gives you a low‑pressure way to meet people, ask for help, and share interests without worrying about judgment or exposing your identity. You choose what to talk about; we help you find someone who’s into the same thing.
+Help students find a peer to talk to—about study topics, hobbies, open up thoughts, vent out or just to check in—without sharing personal details.
 
-## What you can do
+What you can do
+---------------
 
-- Sign up or log in with your email and password
- - Sign up or log in with your email and password (only WVSU emails ending in `@wvsu.edu.ph` are accepted)
-- Turn on “Remember me” so your email is filled in next time
-- Forgot your password? Send yourself a reset link instantly
-- Quick Chat: let the app find you a random partner
-- Interest Match: tap from a colorful grid of interests (or add your own) and get matched
+- Sign up or sign in using a WVSU email (currently accepts `@wvsu.edu.ph`).
+- Start a Quick Chat or choose an interest to match with someone who selected the same topic.
+- Join Vibe Rooms for topic-based group discussions or post short messages on the Gratitude Wall.
 
-## How it works (simple overview)
+Quick start (developer)
+-----------------------
 
-1) From Home, choose Quick Chat or Interest Match.
-2) The Lobby shows either the random chat screen or a grid of interests.
-3) Tap “Start Chat.” We look for a partner who’s also ready. You can cancel anytime.
-4) When a match is found, you’ll be taken to a chat session. (Messaging UI is coming soon; for now you’ll see the session ID.)
+Prerequisites: Flutter (stable channel) and a Firebase project for local testing.
 
-## Features at a glance
-
-- Clean, modern UI (Material 3)
-- Keyword‑based interest picker with colored icons and an “Add Custom” option
-- Sticky action buttons with clear feedback
-- Matchmaking MVP powered by Firebase (Firestore + Auth)
-- Anonymous by design: no public identity in chats
-
-## Under the hood (short, not scary)
-
-- Flutter app with a central router (`lib/router/app_router.dart`)
-- Firebase Auth for sign‑in/up and Firestore for a lightweight matching queue
-- SharedPreferences for “Remember me”
-- Client‑side matching stub today; planned move to Cloud Functions for robust, race‑free pairing
-
-## Roadmap (what we’re building next)
-
-- Full chat experience: message list, composer, typing indicator, read markers
-- Safety tools: report a chat, post‑chat rating, and admin review hooks
-- Vibe Rooms (join ongoing groups by topic)
-- Gratitude Wall (share something positive), Community Standing, Profiles & Settings
-- Firestore security rules and emulator tests
-- Admin portal (web) for moderation basics
-
-## Project layout
-
-```
-lib/
-	main.dart               # App bootstrap & Firebase init
-	router/app_router.dart  # Central named routing
-	getting_started.dart    # Onboarding
-	log_in.dart             # Sign-in screen
-	sign_up.dart            # Sign-up screen
-	home.dart               # Home with primary actions
-	chat_lobby.dart         # Random/Keyword lobby & matching
-	chat_session.dart       # Placeholder for chat UI (session view)
-```
-
-## Getting set up (developers)
-
-1) Install Flutter (stable) and set up a Firebase project.
-2) Generate local Firebase config (don’t commit these):
-	 - Android: `android/app/google-services.json`
-	 - iOS: `ios/Runner/GoogleService-Info.plist`
-	 - Dart: `lib/firebase_options.dart` via FlutterFire CLI
-3) Copy `.env.example` to `.env` and fill in anything you plan to load at runtime.
-4) Install packages and run:
+1. Fetch packages:
 
 ```powershell
 flutter pub get
+```
+
+2. Add Firebase platform files locally (do not commit these):
+
+- Android: `android/app/google-services.json`
+- iOS: `ios/Runner/GoogleService-Info.plist`
+- Optional: run FlutterFire CLI to generate `lib/firebase_options.dart`
+
+3. Run the app:
+
+```powershell
 flutter run
 ```
 
-Run tests:
+Tests and checks
+----------------
+
+Run tests and static analysis:
 
 ```powershell
-flutter test
+flutter test --reporter=expanded
+dart analyze
 ```
 
-### Privacy & safety
+Practical notes
+---------------
 
-- Anonymous by default: the chat doesn’t reveal your identity
-- You can cancel matching at any time
-- Secrets are kept out of the repository (see .gitignore); use `.env.example` as your guide
+- The codebase uses a feature-first layout (`lib/features/...`). If your editor shows missing imports after pulling, run `flutter pub get` and restart the Dart analysis server (in VS Code: `Dart: Restart Analysis Server`).
+- Helper scripts may produce `.bak` files during batch edits; these can be removed.
+- The app currently checks WVSU email domains on the client — enforce this on the server or in Firestore rules for production.
 
-Already ignored (do not commit):
+How to help (Really appreciate it if you do tysm!!!)
+-----------
 
-- `lib/firebase_options.dart`
-- `android/app/google-services.json`
-- `ios/Runner/GoogleService-Info.plist`
-- `.env` files, Android/iOS signing keys and certificates
+- Pick a small issue or UI tweak and open a pull request.
+- Run `dart analyze` and `flutter test` before creating a PR.
+- Use a clear branch name and explain your change in the PR description.
 
-### Troubleshooting (friendly tips)
+Troubleshooting
+---------------
 
-- Stuck on “Searching…”? Tap Cancel and try again.
-- Firestore says “requires index”? That happens when sorting + filtering. Create the suggested index in Firebase or temporarily simplify the query.
-- See an error mentioning “defunct” element? That’s a Flutter lifecycle guard. We’ve fixed common causes; if it reappears, share the stack trace so we can tighten it further.
+- App fails to start after changes:
 
-## Contributing
+```powershell
+flutter clean
+flutter pub get
+```
 
-Ideas, designs, code—everything helps. Issues and PRs are welcome, especially around chat UI, safety, and matching. Please don’t commit real keys or signing files; stick to `.env.example` and keep platform configs local.
+- Matching stuck on "Searching": cancel and try again; test with two emulators to simulate two users.
 
-## License
+Contact
+-------
 
-MIT
+Open an issue if you need help or want to propose a substantial change.
+
+License
+-------
+
+MIT — see the `LICENSE` file if present.
+
