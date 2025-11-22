@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:wvsu_space/widgets/app_button.dart';
 
 class NotificationChecker {
-  /// Check if user has unacknowledged warnings and show dialog
+  // Check for unacknowledged warnings and show a dialog if needed so that everyone is informed immediately yeah
   static Future<void> checkAndShowNotifications(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -23,7 +23,7 @@ class NotificationChecker {
       final lastAcknowledgedAt =
           data['lastWarningAcknowledgedAt'] as Timestamp?;
 
-      // Check if there are new warnings since last acknowledgment
+      // Show dialog if there are new warnings since last acknowledgment.
       if (warningCount > 0 &&
           (lastAcknowledgedAt == null ||
               (lastWarningAt != null &&
@@ -105,7 +105,8 @@ class NotificationChecker {
               const SizedBox(height: 8),
               ...notifications.map((notification) {
                 final data = notification.data() as Map<String, dynamic>;
-                // Display only abstracted user-appropriate messages
+                // Display only abstracted user-appropriate messages. This is to ensure
+                // that the information they receive are the info that they only need to know.
                 final message = data['message'] as String? ??
                     'You received a warning for violating Community Guidelines.';
                 final category =
@@ -192,10 +193,8 @@ class NotificationChecker {
       ),
     );
 
-    // Mark notifications as acknowledged
+    // Mark notifications acknowledged and navigate if requested.
     await _acknowledgeNotifications();
-
-    // Navigate to notifications page if requested
     if (shouldShowNotifications == true && context.mounted) {
       Navigator.pushNamed(context, '/notifications');
     }
@@ -217,7 +216,7 @@ class NotificationChecker {
     }
   }
 
-  /// Check if user is restricted due to suspension or warnings
+  // Return whether the user is restricted due to suspension or warnings.
   static Future<bool> isUserRestricted() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return true;
@@ -231,7 +230,7 @@ class NotificationChecker {
       final data = userDoc.data();
       if (data == null) return false;
 
-      // Check suspension
+      // Check if user is suspended and whether suspension expired.
       final suspended = data['suspended'] as bool? ?? false;
       if (suspended) {
         final suspendedUntil = data['suspendedUntil'] as Timestamp?;
@@ -239,7 +238,7 @@ class NotificationChecker {
           // Permanently suspended
           return true;
         }
-        // Check if suspension expired
+        // If suspension expired, clear suspension flags.
         if (suspendedUntil.toDate().isAfter(DateTime.now())) {
           return true;
         }
@@ -254,12 +253,9 @@ class NotificationChecker {
         return false;
       }
 
-      // Check warning count
+      // Check warning count and restrict if excessive.
       final warningCount = (data['warningCount'] as num?)?.toInt() ?? 0;
-      if (warningCount >= 5) {
-        // Too many warnings - restrict features
-        return true;
-      }
+      if (warningCount >= 5) return true;
 
       return false;
     } catch (e) {
@@ -268,7 +264,7 @@ class NotificationChecker {
     }
   }
 
-  /// Check restriction and notify user if restricted
+  // Check restriction and show a message if the user is restricted.
   static Future<bool> checkRestrictionAndNotify(BuildContext context) async {
     final restricted = await isUserRestricted();
     if (!restricted || !context.mounted) return restricted;
@@ -284,7 +280,6 @@ class NotificationChecker {
 
       final data = userDoc.data();
       if (data == null) return true;
-
       final suspended = data['suspended'] as bool? ?? false;
       final suspendedUntil = data['suspendedUntil'] as Timestamp?;
       final warningCount = (data['warningCount'] as num?)?.toInt() ?? 0;

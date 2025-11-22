@@ -1,14 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Backfill helper that can be used in tests or server-side Dart code.
-/// It will populate reporterNickname and reportedNickname for recent reports
-/// when the corresponding user documents contain a non-empty `nickname` field.
+// Backfill helper's goal is to populate reporter/reported nicknames when available.
 Future<int> backfillRecentReports(
   FirebaseFirestore db, {
   int limit = 500,
 }) async {
-  // Support both legacy 'reports' and current 'user_reports' collections.
-  // Tests seed 'reports', production code may use 'user_reports'. We merge both.
+  // Read both 'reports' and 'user_reports' to cover test and production data.
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = [];
 
   try {
@@ -19,7 +16,7 @@ Future<int> backfillRecentReports(
         .get();
     docs.addAll(reportsSnap.docs);
   } catch (_) {
-    // Ignore if collection does not exist or orderBy fails in fake DB
+    // Ignore if collection does not exist
   }
 
   try {

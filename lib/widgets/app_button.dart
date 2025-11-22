@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// A small wrapper around [ElevatedButton] that applies the app's
-/// standard primary style (primary background, white foreground) unless
-/// a custom [style] is provided.
+// Small wrapper around `ElevatedButton` that applies the app's primary style which is
+// dark blue or navy.
 class AppButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final Widget child;
