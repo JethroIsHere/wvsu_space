@@ -1,36 +1,36 @@
 import 'package:flutter/material.dart';
 
-import '../getting_started.dart';
-import '../choose.dart';
-import '../splash_screen.dart';
-import '../change_password.dart';
-import '../log_in.dart';
-import '../sign_up.dart';
-import '../main_shell.dart';
-import '../chat_lobby.dart';
-import '../matching_progress.dart';
-import '../admin/reports_admin.dart';
-import '../admin/admin_login.dart';
-import '../admin/admin_dashboard.dart';
-import '../admin/admin_settings.dart';
-import '../admin/user_management.dart';
-import '../admin/logs_appeals.dart';
-import '../settings.dart';
-import '../profile.dart';
-import '../community_guidelines.dart';
-import '../community_standing.dart';
-import '../report_user.dart';
-import '../gratitude_wall/gratitude_wall.dart';
-import '../standing_activity.dart';
-import '../delete_account.dart';
-import '../request_review.dart';
-import '../notifications.dart';
+import 'package:wvsu_space/features/onboarding/getting_started.dart';
+import 'package:wvsu_space/features/onboarding/choose.dart';
+import 'package:wvsu_space/features/onboarding/splash_screen.dart';
+import 'package:wvsu_space/features/auth/change_password.dart';
+import 'package:wvsu_space/features/auth/log_in.dart';
+import 'package:wvsu_space/features/auth/sign_up.dart';
+import 'package:wvsu_space/features/home/main_shell.dart';
+import 'package:wvsu_space/features/chat/chat_lobby.dart';
+import 'package:wvsu_space/features/chat/matching_progress.dart';
+import 'package:wvsu_space/features/admin/admin/reports_admin.dart';
+import 'package:wvsu_space/features/admin/admin/admin_login.dart';
+import 'package:wvsu_space/features/admin/admin/admin_dashboard.dart';
+import 'package:wvsu_space/features/admin/admin/admin_settings.dart';
+import 'package:wvsu_space/features/admin/admin/user_management.dart';
+import 'package:wvsu_space/features/admin/admin/logs_appeals.dart';
+import 'package:wvsu_space/features/profile/settings.dart';
+import 'package:wvsu_space/features/profile/profile.dart';
+import 'package:wvsu_space/features/moderation/community_guidelines.dart';
+import 'package:wvsu_space/features/standing/community_standing.dart';
+import 'package:wvsu_space/features/moderation/report_user.dart';
+import 'package:wvsu_space/features/gratitude_wall/gratitude_wall/gratitude_wall.dart';
+import 'package:wvsu_space/features/standing/standing_activity.dart';
+import 'package:wvsu_space/features/auth/delete_account.dart';
+import 'package:wvsu_space/features/moderation/request_review.dart';
+import 'package:wvsu_space/features/profile/notifications.dart';
 
 // Vibe Rooms selector
-import '../vibe_rooms/selector.dart';
+import 'package:wvsu_space/features/vibe_rooms/vibe_rooms/selector.dart';
 
 // Optional stub for chat session
-import '../chat_session.dart';
+import 'package:wvsu_space/features/chat/chat_session.dart';
 
 class AppRouter {
   // Route names

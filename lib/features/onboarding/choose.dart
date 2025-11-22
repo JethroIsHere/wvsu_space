@@ -1,0 +1,97 @@
+import 'package:flutter/material.dart';
+import 'package:wvsu_space/router/app_router.dart';
+import 'package:wvsu_space/utils/app_colors.dart';
+import 'package:wvsu_space/widgets/app_button.dart';
+
+class ChooseScreen extends StatelessWidget {
+  const ChooseScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final elevatedButtonStyle = ElevatedButton.styleFrom(
+      backgroundColor: BrandColors.appBlue, // app blue
+      foregroundColor: Colors.white,
+      textStyle: Theme.of(context).textTheme.labelLarge,
+      minimumSize: const Size(double.infinity, 52),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+    final outlinedButtonStyle = OutlinedButton.styleFrom(
+      minimumSize: const Size(double.infinity, 52),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      side: BorderSide(color: BrandColors.appBlue),
+      foregroundColor: BrandColors.appBlue,
+    );
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Circular logo with subtle border and shadow to match screenshot
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(20),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.white, width: 6),
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/wvsu_space_logo.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+              Text(
+                'Choose',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Restricted to WVSU email only. Don\'t worry no one will know your identity',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 36),
+
+              AppButton(
+                style: elevatedButtonStyle,
+                onPressed: () => Navigator.pushNamed(context, AppRouter.login),
+                child: const Text('Log In'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                style: outlinedButtonStyle,
+                onPressed: () => Navigator.pushNamed(context, AppRouter.signUp),
+                child: const Text('Sign Up'),
+              ),
+              const SizedBox(height: 16),
+              // Hidden long-press target for Admin access.
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onLongPress: () =>
+                    Navigator.pushNamed(context, AppRouter.adminLogin),
+                child: const SizedBox(height: 24, width: double.infinity),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

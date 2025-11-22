@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../widgets/app_button.dart';
+import 'package:wvsu_space/widgets/app_button.dart';
 
 class NotificationChecker {
   /// Check if user has unacknowledged warnings and show dialog

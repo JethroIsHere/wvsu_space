@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wvsu_space/choose.dart';
+import 'package:wvsu_space/features/onboarding/choose.dart';
 
 void main() {
   testWidgets('Choose screen shows logo and action buttons', (tester) async {

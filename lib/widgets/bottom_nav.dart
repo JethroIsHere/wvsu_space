@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../router/app_router.dart';
+import 'package:wvsu_space/router/app_router.dart';
 
 class BottomNav extends StatelessWidget {
   final int currentIndex;
