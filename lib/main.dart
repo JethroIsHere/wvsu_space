@@ -1,3 +1,4 @@
+/* Purpose of this file: Start the app, set up Firebase, define app colors and theme, and track when the user is active. */
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:wvsu_space/firebase_options.dart';
@@ -6,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:wvsu_space/router/app_router.dart';
 
-// --- Define your custom colors class ---
+/* Group the app colors (success, warning, inactive, cyan). */
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   final Color? success;
@@ -21,7 +22,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.cyan,
   });
 
-  // Helper for easy access
+  // Get these colors from the app theme.
   static AppColors of(BuildContext context) {
     return Theme.of(context).extension<AppColors>()!;
   }
@@ -54,26 +55,21 @@ class AppColors extends ThemeExtension<AppColors> {
     );
   }
 }
-// --- End of custom colors class ---
 
-// --- This is the ONLY main function ---
+/* This is where the app begins running. */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Ensure we have an authenticated user so Firestore rules that require
-  // authenticated access allow reads/writes. Use anonymous sign-in for
-  // quick local/dev testing so rooms are shared across emulators.
+  // If nobody is signed in, sign in anonymously so local testing and rules work.
   try {
     if (FirebaseAuth.instance.currentUser == null) {
       await FirebaseAuth.instance.signInAnonymously();
     }
   } catch (e) {
-    // Non-fatal: app will fall back to in-memory behavior if auth fails.
-    // Keep quiet here; repository already falls back when Firestore is denied.
+    // If signing in fails, don't stop the app. It will keep running without the authentication.
   }
 
-  // Optional: use local Firebase emulators for development.
-  // Enable by passing --dart-define=USE_FIREBASE_EMULATOR=true to `flutter run`.
+  // This part is optional since if you set USE_FIREBASE_EMULATOR=true, the app uses local test servers.
   const useEmulator =
       bool.fromEnvironment('USE_FIREBASE_EMULATOR', defaultValue: false);
   if (useEmulator) {
@@ -81,7 +77,7 @@ void main() async {
       FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
       FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
     } catch (e) {
-      // ignore if emulators are not available
+      // If the emulators aren't running, just continue normally.
     }
   }
   runApp(const MyApp());
@@ -94,12 +90,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo', // You can change this later
+      title: 'WVSU Space', // This is the App Title, in here, it is WVSU Space
       theme: ThemeData(
         brightness: Brightness.light,
         useMaterial3: true,
 
-        // --- STANDARD COLORS ---
+        /* Colors used across the app */
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF003087), // 'Primary'
 
@@ -115,7 +111,7 @@ class MyApp extends StatelessWidget {
           onError: Colors.white,
         ),
 
-        // --- STANDARD TEXT STYLES ---
+        /* Text sizes and styles used in the app */
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontSize: 22.0,
@@ -154,7 +150,7 @@ class MyApp extends StatelessWidget {
           labelSmall: TextStyle(fontSize: 10.0), // Interest Icon Label
         ),
 
-        // --- OTHER STANDARD THEMES ---
+        /* Other theme pieces like dividers and inputs */
         dividerTheme: const DividerThemeData(
           color: Color(0xFFC7C7CC), // 'Divider'
           thickness: 1.0,
@@ -164,7 +160,7 @@ class MyApp extends StatelessWidget {
           hintStyle: TextStyle(fontSize: 12.0, color: Color(0xFF6E6E73)),
         ),
 
-        // --- Register your custom colors ---
+        /* Add our extra color group to the theme */
         extensions: const <ThemeExtension<dynamic>>[
           AppColors(
             success: Color(0xFF34C759),
@@ -174,22 +170,16 @@ class MyApp extends StatelessWidget {
           ),
         ],
       ),
-      // Wrap all routes with a global activity tracker so any screen usage updates lastActiveAt.
+      /* Wrap app screens in a tracker that saves when the user was last active. */
       builder: (context, child) => _ActivityTracker(child: child),
-      // Centralized router
+      // Routes: where screens are picked and opened
       initialRoute: AppRouter.splash,
       onGenerateRoute: AppRouter.onGenerateRoute,
     );
   }
 }
 
-// --- MyHomePage removed as it's no longer the home screen ---
-// class MyHomePage extends StatefulWidget { ... }
-// class _MyHomePageState extends State<MyHomePage> { ... }
-// -----------------------------------------------------------
-
-/// Global lifecycle observer that writes lastActiveAt for the signed-in user
-/// when the app starts, resumes, and periodically while foregrounded.
+/// Purpose: Save when the signed-in user was last active so we know if they are around.
 class _ActivityTracker extends StatefulWidget {
   final Widget? child;
   const _ActivityTracker({this.child});
@@ -207,7 +197,7 @@ class _ActivityTrackerState extends State<_ActivityTracker>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _touch();
-    // Periodic heartbeat (every 5 minutes) while app is running
+    // Heartbeat: every 5 minutes while the app runs
     _heartbeat = Timer.periodic(const Duration(minutes: 5), (_) => _touch());
   }
 
@@ -226,7 +216,7 @@ class _ActivityTrackerState extends State<_ActivityTracker>
   }
 
   Future<void> _touch() async {
-    // Skip if Firebase hasn't been initialized (e.g., widget tests)
+    // If Firebase is not ready (like in tests), don't try to update the database.
     if (Firebase.apps.isEmpty) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -234,14 +224,13 @@ class _ActivityTrackerState extends State<_ActivityTracker>
       await FirebaseFirestore.instance.collection('users').doc(uid).set(
         {
           'lastActiveAt': FieldValue.serverTimestamp(),
-          // Maintain legacy field for compatibility
+          // Also save the older field name so older code can still read it
           'lastActive': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
       );
     } catch (e) {
-      // Avoid spamming logs; keep this quiet in release builds
-      // debugPrint('Failed to update lastActiveAt: $e');
+      // If saving fails, ignore the problem so the app keeps working.
     }
   }
 
