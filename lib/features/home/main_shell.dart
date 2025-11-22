@@ -1,3 +1,4 @@
+/* This is to show the main app shell with bottom navigation and the main screens (Home, Rooms, Gratitude, Standing). */
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/features/home/home.dart';
 import 'package:wvsu_space/features/standing/community_standing.dart';
@@ -18,7 +19,7 @@ class _MainShellState extends State<MainShell> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    // Vibe Rooms list replaces the previous placeholder
+    // Vibe Rooms list (shows available rooms)
     const RoomListScreen(),
     const GratitudeWallScreen(),
     const CommunityStandingScreen(),
@@ -31,15 +32,17 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Keep other pages' state while showing the selected one
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: BottomNav(
         currentIndex: _index,
         onIndexChanged: _onIndexChanged,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      // Show a create-room (+) button only on the Rooms tab
       floatingActionButton: _index == 1
           ? Padding(
-              // raise FAB so it overlaps less with list items
+              // Lift the + button so it does not cover list items
               padding: const EdgeInsets.only(bottom: 40.0),
               child: FloatingActionButton(
                 heroTag: null,

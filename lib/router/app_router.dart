@@ -1,3 +1,4 @@
+/* This is the central place that defines all app routes and how screens transition when opened. */
 import 'package:flutter/material.dart';
 
 import 'package:wvsu_space/features/onboarding/getting_started.dart';
@@ -26,14 +27,14 @@ import 'package:wvsu_space/features/auth/delete_account.dart';
 import 'package:wvsu_space/features/moderation/request_review.dart';
 import 'package:wvsu_space/features/profile/notifications.dart';
 
-// Vibe Rooms selector
+// Vibe Rooms chooser
 import 'package:wvsu_space/features/vibe_rooms/selector.dart';
 
-// Optional stub for chat session
+// Chat session screen
 import 'package:wvsu_space/features/chat/chat_session.dart';
 
 class AppRouter {
-  // Route names
+  /* Route names used across the app */
   static const String gettingStarted = '/';
   static const String splash = '/splash';
   static const String choose = '/choose';
@@ -60,7 +61,6 @@ class AppRouter {
   static const String requestReview = '/request-review';
   static const String notifications = '/notifications';
   static const String vibeRooms = '/rooms';
-  // Legacy route name for backwards compatibility
   static const String warnings = '/warnings';
   static const String gratitude = '/gratitude';
 
@@ -141,6 +141,7 @@ class AppRouter {
     }
   }
 
+  /* Build a page route that slides the new screen in from the right. */
   static PageRouteBuilder<dynamic> _buildRoute(
     Widget child,
     RouteSettings settings,
@@ -161,6 +162,7 @@ class AppRouter {
   }
 }
 
+// Shown when a route name is not found
 class _NotFoundPage extends StatelessWidget {
   const _NotFoundPage();
 
