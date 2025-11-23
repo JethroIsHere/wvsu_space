@@ -1,4 +1,4 @@
-/* Purpose of this file: Start the app, set up Firebase, define app colors and theme, and track when the user is active. */
+// Upon user's entry in the app, initialize Firebase, set theme, and track user activity.
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:wvsu_space/firebase_options.dart';
@@ -7,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:wvsu_space/router/app_router.dart';
 
-/* Group the app colors (success, warning, inactive, cyan). */
+// App color group (success, warning, inactive, cyan). Cyan is for tooltips hehe!
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   final Color? success;
@@ -56,7 +56,7 @@ class AppColors extends ThemeExtension<AppColors> {
   }
 }
 
-/* This is where the app begins running. */
+// Main entry point for the application. This is where everything starts.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -170,7 +170,7 @@ class MyApp extends StatelessWidget {
           ),
         ],
       ),
-      /* Wrap app screens in a tracker that saves when the user was last active. */
+      // Wrap screens with a tracker that records last active time.
       builder: (context, child) => _ActivityTracker(child: child),
       // Routes: where screens are picked and opened
       initialRoute: AppRouter.splash,

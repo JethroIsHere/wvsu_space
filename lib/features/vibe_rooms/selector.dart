@@ -3,7 +3,7 @@ import 'package:wvsu_space/features/vibe_rooms/repository.dart';
 import 'package:wvsu_space/features/vibe_rooms/chat.dart';
 import 'package:wvsu_space/features/vibe_rooms/utils.dart';
 
-/// Simple mood selector that demonstrates entry points for the Vibe Rooms feature.
+// This lets you select a mood to be the theme of the vibe room you want to host.
 class VibeRoomSelector extends StatelessWidget {
   const VibeRoomSelector({super.key});
 

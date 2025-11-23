@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-/// A dialog shown after the chat ends that lets the user rate their partner.
+// This is where you can rate your random chat partner that has left or you left behind.
 class RateConversationDialog extends StatefulWidget {
   final String sessionId;
   final VoidCallback? onComplete;
@@ -192,7 +192,7 @@ class _RateConversationDialogState extends State<RateConversationDialog> {
       debugPrint(
           'Rating submission - Rater: $uid, Rated: $otherUid, Rating: $_selectedRating');
 
-      // Calculate standing delta: 1:-2, 2:-1, 3:0, 4:+1, 5:+2
+      // Calculate standing delta: 1:-2, 2:-1, 3:0, 4:+1, 5:+2. This is only fair to be honest
       final deltas = {1: -2, 2: -1, 3: 0, 4: 1, 5: 2};
       final delta = deltas[_selectedRating] ?? 0;
 
@@ -239,13 +239,11 @@ class _RateConversationDialogState extends State<RateConversationDialog> {
 
         // 3. Add standing report (after transaction completes)
         await userRef.collection('standing_reports').add({
-          // Store a generic sanitized title (no explicit qualitative label)
           'title': 'Conversation feedback received',
           'delta': delta,
           'type': 'chat_rating',
           'time': FieldValue.serverTimestamp(),
           'sessionId': widget.sessionId,
-          // Additional fields retained for internal analytics / future use
           'rating': _selectedRating,
           'ratingLabel': _label(_selectedRating),
         });
