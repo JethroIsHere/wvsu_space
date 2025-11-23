@@ -1,285 +1,268 @@
 rules_version = '2';
 service cloud.firestore {
-	match /databases/{database}/documents {
-		function isSignedIn() { return request.auth != null; }
-		function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
+  match /databases/{database}/documents {
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
 
-		// Collection group queries for admin moderation logs
-		match /{path=**}/warnings/{warningId} {
-			allow read: if isAdmin();
-		}
-		
-		match /{path=**}/standing_reports/{reportId} {
-			allow read: if isAdmin();
-		}
+    // Helper: user must be signed-in, email verified, and belong to WVSU domain
+    function isVerifiedWvsu() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('^.+@wvsu\\.edu\\.ph$');
+    }
 
-		// Matchmaking queue: each user owns a doc with id == uid
-				match /matchQueue/{uid} {
-					// Anyone signed in can read to discover potential partners
-					allow read: if isSignedIn();
+    // Collection group queries for admin moderation logs
+    match /{path=**}/warnings/{warningId} {
+      allow read: if isAdmin();
+    }
 
-					// Users manage their own queue doc normally
-					allow create, update, delete: if isSignedIn() && uid == request.auth.uid;
+    match /{path=**}/standing_reports/{reportId} {
+      allow read: if isAdmin();
+    }
 
-					// Temporary client-side pairing support (for Spark/no billing): allow a
-					// peer to transition another user's doc from waiting -> paired, but only
-					// when partner is the caller and a sessionId is provided. This narrows
-					// the write and mitigates abuse.
-					allow update: if isSignedIn() &&
-						uid != request.auth.uid &&
-						resource.data.status == 'waiting' &&
-						request.resource.data.status == 'paired' &&
-						request.resource.data.sessionId is string &&
-						request.resource.data.partner == request.auth.uid;
-				}
+    // Matchmaking queue: each user owns a doc with id == uid
+    match /matchQueue/{uid} {
+      // Anyone signed in can read
+      allow read: if isSignedIn();
 
-		// Sessions and messages
-				match /sessions/{sessionId} {
-						// Only participants of the session can read the session document.
-						allow read: if isSignedIn() &&
-							request.auth.uid in resource.data.participants;
+      // Users manage their own queue doc
+      allow create, update, delete: if isSignedIn() && uid == request.auth.uid;
 
-						// TEMP (dev fallback): allow clients to create a session doc when
-						// performing client-side pairing. Restrict to:
-						// - participants is a list of exactly 2 uids
-						// - the caller is one of the participants
-						// - mode is a string
-						// Updates/deletes remain blocked.
-						allow create: if isSignedIn() &&
-							request.resource.data.participants is list &&
-							request.resource.data.participants.size() == 2 &&
-							request.auth.uid in request.resource.data.participants &&
-							request.resource.data.mode is string;
-						// Allow participants to mark the session as ended.
-						allow update: if isSignedIn() &&
-							request.auth.uid in resource.data.participants &&
-							request.resource.data.status == 'ended' &&
-							request.resource.data.endedBy == request.auth.uid;
-						allow delete: if false;
+      // Allow a peer to transition waiting -> paired with constraints
+      allow update: if isSignedIn()
+        && uid != request.auth.uid
+        && resource.data.status == 'waiting'
+        && request.resource.data.status == 'paired'
+        && request.resource.data.sessionId is string
+        && request.resource.data.partner == request.auth.uid;
+    }
 
-					match /messages/{messageId} {
-						// Only participants can read and write messages.
-						allow read: if isSignedIn() &&
-							request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants;
-						allow create: if isSignedIn() &&
-							request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants;
-						// Disallow client updates/deletes of messages for integrity.
-						allow update, delete: if false;
-					}
-				}
+    // Sessions and messages
+    match /sessions/{sessionId} {
+      // Only participants of the session can read the session document.
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
 
-		// Reports: allow any signed-in user to submit; only admins can read/update
-		match /reports/{id} {
-			allow create: if isSignedIn();
-			allow read: if isAdmin();
-			allow update: if isAdmin();
-			allow delete: if isAdmin();
-		}
+      // TEMP (dev fallback): allow clients to create a session doc when
+      // performing client-side pairing. Require verified WVSU account to create.
+      allow create: if isVerifiedWvsu()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.mode is string;
 
-		// Gratitude Wall posts: gratitude (permanent) and express (anonymous, expires)
-		match /gratitude_posts/{postId} {
-			// Public read so the wall is visible to everyone in the app
-			allow read: if true;
+      // Allow participants to mark the session as ended.
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.participants
+        && request.resource.data.status == 'ended'
+        && request.resource.data.endedBy == request.auth.uid;
 
-			// Creating a post requires authentication and basic validation
-			allow create: if isSignedIn()
-				&& request.resource.data.authorId == request.auth.uid
-				&& request.resource.data.content is string
-				&& request.resource.data.type is string
-				&& (request.resource.data.type == 'gratitude' || request.resource.data.type == 'express')
-				&& request.resource.data.timestamp is timestamp
-				&& request.resource.data.isAnonymous is bool
-				// express posts must include expiresAt timestamp; gratitude posts must not include expiresAt
-				&& (
-					(request.resource.data.type == 'express' && request.resource.data.expiresAt is timestamp)
-					|| (request.resource.data.type == 'gratitude' && !request.resource.data.keys().hasAny(['expiresAt']))
-				)
-				// likes should be numeric (clients typically start at 0)
-				&& (request.resource.data.likes is number || !request.resource.data.keys().hasAny(['likes']));
+      allow delete: if false;
 
-						// Allow clients to update only the `likes` and `likedBy` fields (signed-in users).
-						// This is a slightly more permissive rule that accepts updates which only
-						// touch the top-level `likes` and `likedBy` keys. We use this as a
-						// fallback to avoid rejecting valid client updates due to edge cases
-						// (null maps, nested-diff behavior). If needed, we can tighten later.
-						allow update: if isSignedIn() && (
-							// allow likes/likedBy updates as before
-							request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes','likedBy'])
-							// or allow a one-time client backfill of expiresAt for posts
-								|| (!resource.data.keys().hasAny(['expiresAt'])
-									&& request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt'])
-									&& request.resource.data.expiresAt is timestamp)
-						);
-												// Allow owner to delete their own posts, or allow any signed-in
-												// user to delete an express post that has already expired.
-												allow delete: if isSignedIn() && (
-													resource.data.authorId == request.auth.uid
-													|| (
-															resource.data.expiresAt is timestamp &&
-															resource.data.expiresAt <= request.time
-														)
-												);
-		}
+      match /messages/{messageId} {
+        // Only participants can read and write messages.
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants;
+        allow create: if isVerifiedWvsu()
+          && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.senderNickname is string
+          && request.resource.data.timestamp is timestamp;
+        // Disallow client updates/deletes of messages for integrity.
+        allow update, delete: if false;
+      }
+    }
 
-		// User-submitted reports (v2 path to avoid legacy triggers)
-		match /user_reports/{id} {
-			allow create: if isSignedIn();
-			allow read: if isAdmin();
-			allow update: if isAdmin();
-			allow delete: if isAdmin();
-		}
+    // Reports: only verified WVSU users may submit; only admins can read/update
+    match /reports/{id} {
+      allow create: if isVerifiedWvsu();
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
 
-		// Admin review requests (appeals): users create; only admins can read/update
-		match /admin_review_requests/{id} {
-			allow create: if isSignedIn();
-			allow read: if isAdmin();
-			allow update: if isAdmin();
-			allow delete: if false;
-		}
+    // Gratitude Wall posts: gratitude (permanent) and express (anonymous, expires)
+    match /gratitude_posts/{postId} {
+      // Public read so the wall is visible to everyone in the app
+      allow read: if true;
 
-		// Admin registry for incrementing labels
-		match /admins/{adminId} {
-			allow read, write: if isAdmin();
-		}
+      // Creating a post requires a verified WVSU account and basic validation
+      allow create: if isVerifiedWvsu()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.content is string
+        && request.resource.data.type is string
+        && (request.resource.data.type == 'gratitude' || request.resource.data.type == 'express')
+        && request.resource.data.timestamp is timestamp
+        && request.resource.data.isAnonymous is bool
+        && (
+          (request.resource.data.type == 'express' && request.resource.data.expiresAt is timestamp)
+          || (request.resource.data.type == 'gratitude' && !request.resource.data.keys().hasAny(['expiresAt']))
+        )
+        && (request.resource.data.likes is number || !request.resource.data.keys().hasAny(['likes']));
 
-		match /admins_meta/{docId} {
-			allow read, write: if isAdmin();
-		}
+      // Allow clients to update only the `likes` and `likedBy` fields (verified users).
+      allow update: if isVerifiedWvsu() && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes','likedBy'])
+        || (!resource.data.keys().hasAny(['expiresAt'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt'])
+            && request.resource.data.expiresAt is timestamp)
+      );
 
-		// Ratings: allow any signed-in user to create a rating document.
-		// Backend Cloud Function will process standing changes. No client reads needed.
-		match /ratings/{id} {
-			allow create: if isSignedIn();
-			allow read, update, delete: if false;
-		}
+      // Allow owner to delete their own posts, or allow any signed-in user to delete an express post that has expired.
+      allow delete: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid
+        || (resource.data.expiresAt is timestamp && resource.data.expiresAt <= request.time)
+      );
+    }
 
-		// Vibe Rooms: public read, authenticated create, owner-only delete.
-		match /vibe_rooms/{roomId} {
-			// Public listing: anyone can read rooms (adjust if you prefer restricted listings)
-			allow read: if true;
+    // User-submitted reports (v2 path to avoid legacy triggers)
+    match /user_reports/{id} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
 
-			// Creating a room requires authentication and the ownerUid must match the caller.
-			allow create: if isSignedIn()
-				&& request.resource.data.ownerUid == request.auth.uid
-				&& request.resource.data.title is string
-				&& request.resource.data.mood is string
-				&& request.resource.data.participantCount is int
-				&& request.resource.data.maxParticipants is int;
+    // Admin review requests (appeals): users create; only admins can read/update
+    match /admin_review_requests/{id} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
 
-			// Allow updates for participant list changes by any signed-in user
-			// (clients update participants/participantCount) or allow owner to update metadata.
-			// Use `diff(...).affectedKeys()` to allow updates that only change
-			// the participant fields without requiring the request resource to
-			// contain only those keys.
-			allow update: if isSignedIn() && (
-				(request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount','participants']))
-				|| (resource.data.ownerUid == request.auth.uid)
-			);
+    // Admin registry for incrementing labels
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
 
-			// Only the owner (creator) may delete the room.
-			allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    match /admins_meta/{docId} {
+      allow read, write: if isAdmin();
+    }
 
-			// Presence subcollection: one doc per user (doc id == uid)
-			match /presence/{uid} {
-				// Allow anyone to read presence for UI convenience
-				allow read: if true;
+    // Ratings: allow any signed-in user to create a rating document.
+    // Backend Cloud Function will process standing changes. No client reads needed.
+    match /ratings/{id} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false;
+    }
 
-				// Only the user themselves may create/update/delete their presence doc.
-				// We only accept `lastSeen` (timestamp) and optional `nickname` (string).
-				allow create: if isSignedIn()
-					&& request.auth.uid == uid
-					&& request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
-					&& (request.resource.data.lastSeen is timestamp);
+    // Vibe Rooms: public read, verified create, owner-only delete.
+    match /vibe_rooms/{roomId} {
+      // Public listing: anyone can read rooms
+      allow read: if true;
 
-				allow update: if isSignedIn()
-					&& request.auth.uid == uid
-					&& request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
-					&& (request.resource.data.lastSeen is timestamp);
+      // Creating a room requires a verified WVSU account and the ownerUid must match the caller.
+      allow create: if isVerifiedWvsu()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.mood is string
+        && request.resource.data.participantCount is int
+        && request.resource.data.maxParticipants is int;
 
-				allow delete: if isSignedIn() && request.auth.uid == uid;
-			}
+      // Allow updates for participant list changes or owner metadata edits.
+      allow update: if isSignedIn() && (
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount','participants']))
+        || (resource.data.ownerUid == request.auth.uid)
+      );
 
-			// Messages subcollection for rooms
-			match /messages/{messageId} {
-				// Public read so listings inside a room are visible; require auth to post.
-				allow read: if true;
-				// Only signed-in users may create messages. Basic validation on fields.
-				allow create: if isSignedIn()
-					&& request.resource.data.senderId == request.auth.uid
-					&& request.resource.data.text is string
-					&& request.resource.data.senderNickname is string
-					&& request.resource.data.timestamp is timestamp
-					// optional system flag
-					&& (!request.resource.data.keys().hasAny(['isSystem']) || request.resource.data.isSystem is bool);
-				// Disallow client-side updates for integrity. Allow deletes only by the room owner.
-				allow update: if false;
-				allow delete: if isSignedIn() &&
-					(request.auth.uid == get(/databases/$(database)/documents/vibe_rooms/$(roomId)).data.ownerUid);
-			}
-		}
+      // Only the owner (creator) may delete the room.
+      allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
 
-		// Users: allow admins to read user profiles (for moderation UI)
-		// Also allow a user to read their own profile document.
-		// Allow reading other users' docs for rating/report transactions
-		match /users/{uid} {
-			allow read: if isAdmin() || 
-				(request.auth != null && request.auth.uid == uid) ||
-				isSignedIn(); // Allow reading for transactions
-			// Allow updating standing field only (for rating system)
-			allow update: if isSignedIn() && 
-				request.resource.data.diff(resource.data).affectedKeys().hasOnly(['standing']);
-			// Allow users to update ONLY their own activity tracking fields
-			// Accept either lastActiveAt alone or both lastActiveAt + legacy lastActive
-			allow update: if isSignedIn() &&
-				request.auth.uid == uid &&
-				request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt', 'lastActive']);
-			// Allow admins to update any field (for warnings, suspensions, etc.)
-			allow update: if isAdmin();
-						// Allow creating user doc if it only contains standing and uid fields (for rating system initialization)
-						// OR allow normal client-side signup documents but enforce WVSU email domain.
-						allow create: if isSignedIn() && (
-								(
-									request.resource.data.keys().hasOnly(['standing', 'uid']) &&
-									request.resource.data.standing is number
-								)
-								||
-								(
-									// Typical sign-up path: caller creates their own user doc with limited fields
-									request.auth.uid == uid
-									&& request.resource.data.uid == request.auth.uid
-									&& request.resource.data.nickname is string
-									  && request.resource.data.email is string
-									  // Enforce WVSU email domain at rules level for defense-in-depth
-									  // Clients now submit the email lowercased; match against lowercase-only pattern.
-									  && request.resource.data.email.matches('(^[^@\\s]+@wvsu\\.edu\\.ph$)|(^jet3danocup@gmail\\.com$)')
-									&& request.resource.data.createdAt is timestamp
-									&& request.resource.data.standing is number
-									&& request.resource.data.keys().hasOnly(['nickname','email','createdAt','standing','uid'])
-								)
-						);
-			allow delete: if false;
-			
-			// Allow clients to write standing_reports for rating/report tracking
-			match /standing_reports/{reportId} {
-				allow read: if request.auth != null && request.auth.uid == uid;
-				allow create: if isSignedIn();
-				allow update, delete: if false;
-			}
-			
-			// Warnings subcollection: only admins can write, user can read their own
-			match /warnings/{warningId} {
-				allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
-				// Allow admins to create warnings and score adjustment notifications
-				allow create: if isAdmin();
-				allow update, delete: if false;
-			}
-			
-			// Suspensions subcollection: only admins can write, user can read their own
-			match /suspensions/{suspensionId} {
-				allow read: if request.auth != null && request.auth.uid == uid;
-				allow create: if isAdmin();
-				allow update, delete: if false;
-			}
-		}
-	}
+      // Presence subcollection: one doc per user (doc id == uid)
+      match /presence/{uid} {
+        // Allow anyone to read presence for UI convenience
+        allow read: if true;
+
+        // Only the verified user themselves may create/update/delete their presence doc.
+        allow create: if isVerifiedWvsu()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
+          && (request.resource.data.lastSeen is timestamp);
+
+        allow update: if isVerifiedWvsu()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
+          && (request.resource.data.lastSeen is timestamp);
+
+        allow delete: if isVerifiedWvsu() && request.auth.uid == uid;
+      }
+
+      // Messages subcollection for rooms
+      match /messages/{messageId} {
+        // Public read so listings inside a room are visible; require auth to post.
+        allow read: if true;
+        // Only verified WVSU users may create messages. Basic validation on fields.
+        allow create: if isVerifiedWvsu()
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.senderNickname is string
+          && request.resource.data.timestamp is timestamp
+          && (!request.resource.data.keys().hasAny(['isSystem']) || request.resource.data.isSystem is bool);
+        // Disallow client-side updates for integrity. Allow deletes only by the room owner.
+        allow update: if false;
+        allow delete: if isSignedIn() && (request.auth.uid == get(/databases/$(database)/documents/vibe_rooms/$(roomId)).data.ownerUid);
+      }
+    }
+
+    // Users: allow admins to read user profiles (for moderation UI)
+    // Also allow a user to read their own profile document.
+    // Allow reading other users' docs for rating/report transactions
+    match /users/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid) || isSignedIn();
+
+      // Allow updating standing field only (for rating system)
+      allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['standing']);
+
+      // Allow users to update ONLY their own activity tracking fields
+      allow update: if isSignedIn() && request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt', 'lastActive']);
+
+      // Allow admins to update any field (for warnings, suspensions, etc.)
+      allow update: if isAdmin();
+
+      // Allow creating user doc if it only contains standing and uid fields (for rating system initialization)
+      // OR allow normal client-side signup documents but enforce WVSU email domain.
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.keys().hasOnly(['standing', 'uid']) &&
+          request.resource.data.standing is number
+        )
+        || (
+          request.auth.uid == uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.nickname is string
+          && request.resource.data.email is string
+          && request.resource.data.email.matches('(^[^@\\s]+@wvsu\\.edu\\.ph$)|(^jet3danocup@gmail\\.com$)')
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.standing is number
+          && request.resource.data.keys().hasOnly(['nickname','email','createdAt','standing','uid'])
+        )
+      );
+
+      allow delete: if false;
+
+      // Allow clients to write standing_reports for rating/report tracking
+      match /standing_reports/{reportId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if isSignedIn();
+        allow update, delete: if false;
+      }
+
+      // Warnings subcollection: only admins can write, user can read their own
+      match /warnings/{warningId} {
+        allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+        // Allow admins to create warnings and score adjustment notifications
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+
+      // Suspensions subcollection: only admins can write, user can read their own
+      match /suspensions/{suspensionId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+    }
+  }
 }

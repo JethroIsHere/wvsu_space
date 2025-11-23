@@ -81,8 +81,36 @@ class _LogInScreenState extends State<LogInScreen> {
         debugPrint('SharedPreferences error: $e');
       }
 
-      // 3. Navigate based on custom claims: admin -> admin reports, else home
+      // 3. Require email verification for WVSU sign-ins.
       final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        // Attempt to resend verification email, then sign out and inform user.
+        try {
+          await user.sendEmailVerification();
+        } catch (e) {
+          debugPrint('Failed to send verification email: $e');
+        }
+        await FirebaseAuth.instance.signOut();
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Email not verified'),
+              content: const Text(
+                  'Please verify your WVSU email. A verification link was (re)sent to your inbox.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      // 4. Navigate based on custom claims: admin -> admin reports, else home
       bool isAdmin = false;
       if (user != null) {
         try {

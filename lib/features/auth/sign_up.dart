@@ -80,11 +80,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'uid': credential.user!.uid,
         });
 
-        // 3. Navigate to Home Screen on success
-        if (mounted) {
-          // Check if the widget is still in the tree
-          Navigator.pushReplacementNamed(context, AppRouter.home);
+        // 3. Send verification email and ask user to verify before using the app
+        try {
+          await credential.user!.sendEmailVerification();
+        } catch (e) {
+          debugPrint('Failed to send verification email: $e');
         }
+        // Avoid using the BuildContext after async gaps without a mounted check
+        if (!mounted) return;
+        // Tell the user to check their inbox and return to login
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Verify your email'),
+            content: const Text(
+                'A verification email was sent. Please verify your WVSU email before signing in.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, AppRouter.login);
       }
     } on FirebaseAuthException catch (e) {
       // Handle specific Firebase errors
