@@ -44,8 +44,10 @@ service cloud.firestore {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
 
       // TEMP (dev fallback): allow clients to create a session doc when
-      // performing client-side pairing. Require verified WVSU account to create.
-      allow create: if isVerifiedWvsu()
+      // performing client-side pairing. Allow any signed-in user to create
+      // a session (quick chat or interest matching) as long as they are one
+      // of the participants. Client-side pairing remains constrained.
+      allow create: if isSignedIn()
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
         && request.auth.uid in request.resource.data.participants
@@ -63,12 +65,19 @@ service cloud.firestore {
         // Only participants can read and write messages.
         allow read: if isSignedIn()
           && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants;
-        allow create: if isVerifiedWvsu()
+        // Allow create if caller is a session participant and basic validation passes.
+        // Support either the older `timestamp`/`senderNickname` fields or the
+        // session UI's `ts` field and optional nickname.
+        allow create: if isSignedIn()
           && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
-          && request.resource.data.senderNickname is string
-          && request.resource.data.timestamp is timestamp;
+          && (
+            // legacy format: senderNickname + timestamp
+            (request.resource.data.senderNickname is string && request.resource.data.timestamp is timestamp)
+            // or new session UI: ts (serverTimestamp) with optional senderNickname
+            || (request.resource.data.ts is timestamp)
+          );
         // Disallow client updates/deletes of messages for integrity.
         allow update, delete: if false;
       }
@@ -101,12 +110,17 @@ service cloud.firestore {
         )
         && (request.resource.data.likes is number || !request.resource.data.keys().hasAny(['likes']));
 
-      // Allow clients to update only the `likes` and `likedBy` fields (verified users).
-      allow update: if isVerifiedWvsu() && (
+      // Allow clients to update only the `likes` and `likedBy` fields (signed-in users),
+      // or allow any signed-in user to backfill `expiresAt` when setting it to a
+      // past/now timestamp (used by the refresh button to mark posts expired).
+      allow update: if isSignedIn() && (
+        // likes/likedBy updates
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes','likedBy'])
+        // or a one-time set of expiresAt to mark an expired post (must be <= server time)
         || (!resource.data.keys().hasAny(['expiresAt'])
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt'])
-            && request.resource.data.expiresAt is timestamp)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt'])
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt <= request.time)
       );
 
       // Allow owner to delete their own posts, or allow any signed-in user to delete an express post that has expired.
@@ -153,8 +167,9 @@ service cloud.firestore {
       // Public listing: anyone can read rooms
       allow read: if true;
 
-      // Creating a room requires a verified WVSU account and the ownerUid must match the caller.
-      allow create: if isVerifiedWvsu()
+      // Creating a room requires a signed-in user and the ownerUid must match the caller.
+      // (Relaxed from verified-only so creators can persist rooms immediately.)
+      allow create: if isSignedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.title is string
         && request.resource.data.mood is string
@@ -175,34 +190,44 @@ service cloud.firestore {
         // Allow anyone to read presence for UI convenience
         allow read: if true;
 
-        // Only the verified user themselves may create/update/delete their presence doc.
-        allow create: if isVerifiedWvsu()
+        // Allow the signed-in user themselves to create/update/delete their presence doc.
+        // Presence is a low-risk client-side write used for active participant tracking.
+        allow create: if isSignedIn()
           && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
           && (request.resource.data.lastSeen is timestamp);
 
-        allow update: if isVerifiedWvsu()
+        allow update: if isSignedIn()
           && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['lastSeen', 'nickname'])
           && (request.resource.data.lastSeen is timestamp);
 
-        allow delete: if isVerifiedWvsu() && request.auth.uid == uid;
+        allow delete: if isSignedIn() && request.auth.uid == uid;
       }
 
       // Messages subcollection for rooms
       match /messages/{messageId} {
         // Public read so listings inside a room are visible; require auth to post.
         allow read: if true;
-        // Only verified WVSU users may create messages. Basic validation on fields.
-        allow create: if isVerifiedWvsu()
+        // Allow signed-in participants to create messages. Basic validation on fields.
+        // Require the caller to be the sender and a participant or the room owner.
+        allow create: if isSignedIn()
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.senderNickname is string
           && request.resource.data.timestamp is timestamp
-          && (!request.resource.data.keys().hasAny(['isSystem']) || request.resource.data.isSystem is bool);
+          && (!request.resource.data.keys().hasAny(['isSystem']) || request.resource.data.isSystem is bool)
+          && (
+            request.auth.uid == get(/databases/$(database)/documents/vibe_rooms/$(roomId)).data.ownerUid
+            || request.auth.uid in get(/databases/$(database)/documents/vibe_rooms/$(roomId)).data.participants
+          );
         // Disallow client-side updates for integrity. Allow deletes only by the room owner.
         allow update: if false;
-        allow delete: if isSignedIn() && (request.auth.uid == get(/databases/$(database)/documents/vibe_rooms/$(roomId)).data.ownerUid);
+        // Allow the message sender or the room owner to delete a message.
+        allow delete: if isSignedIn() && (
+          request.auth.uid == resource.data.senderId
+          || request.auth.uid == get(/databases/$(database)/documents/vibe_rooms/$(roomId)).data.ownerUid
+        );
       }
     }
 
@@ -237,6 +262,8 @@ service cloud.firestore {
           && request.resource.data.createdAt is timestamp
           && request.resource.data.standing is number
           && request.resource.data.keys().hasOnly(['nickname','email','createdAt','standing','uid'])
+          // Only allow creating the normal user doc when the caller's email is verified
+          && isVerifiedWvsu()
         )
       );
 

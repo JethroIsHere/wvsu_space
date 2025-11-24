@@ -221,14 +221,19 @@ class _ActivityTrackerState extends State<_ActivityTracker>
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).set(
-        {
-          'lastActiveAt': FieldValue.serverTimestamp(),
-          // Also save the older field name so older code can still read it
-          'lastActive': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      final user = FirebaseAuth.instance.currentUser;
+      // Do not create user documents for anonymous or unverified accounts.
+      // Only update last-active for non-anonymous users whose email is verified.
+      if (user != null && !user.isAnonymous && (user.emailVerified == true)) {
+        await FirebaseFirestore.instance.collection('users').doc(uid).set(
+          {
+            'lastActiveAt': FieldValue.serverTimestamp(),
+            // Also save the older field name so older code can still read it
+            'lastActive': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
     } catch (e) {
       // If saving fails, ignore the problem so the app keeps working.
     }

@@ -316,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           _OutlinedCard(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 18.0, vertical: 21.0),
+                                  horizontal: 18.0, vertical: 14.0),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -492,14 +492,32 @@ class _OutlinedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.primary, width: 1),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: child,
+    // Use a Stack so we can reliably paint the border as an overlay on top
+    // of the child on all devices. The overlay is an IgnorePointer so it
+    // does not conflict with the taps.
+    return Stack(
+      children: [
+        // Base card with background and rounded corners
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: child,
+        ),
+        // Border overlay always paints on top
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.primary, width: 1),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
