@@ -76,7 +76,6 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 18),
-
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
@@ -99,9 +98,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 18),
-
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -152,11 +149,17 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                   return;
                                 }
 
-                                // If the user signed in with email/password, prompt for password to reauthenticate.
+                                // Decide whether we need reauthentication.
                                 final providerIds = user.providerData
                                     .map((p) => p.providerId)
                                     .toList();
-                                if (providerIds.contains('password')) {
+                                var readyToDelete = false;
+
+                                // Allow anonymous users to delete without extra reauthentication.
+                                if (user.isAnonymous) {
+                                  readyToDelete = true;
+                                } else if (providerIds.contains('password')) {
+                                  // If the user signed in with email/password, prompt for password to reauthenticate.
                                   final password = await showDialog<String?>(
                                     context: localContext,
                                     builder: (dctx) {
@@ -193,22 +196,21 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                       email: user.email ?? '',
                                       password: password,
                                     );
-                                    await user.reauthenticateWithCredential(
-                                      cred,
-                                    );
+                                    await user
+                                        .reauthenticateWithCredential(cred);
+                                    readyToDelete = true;
                                   } on FirebaseAuthException catch (e) {
                                     if (!mounted) return;
                                     messenger.showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'Reauthentication failed: ${e.message}',
-                                        ),
+                                            'Reauthentication failed: ${e.message}'),
                                       ),
                                     );
                                     return;
                                   }
                                 } else {
-                                  // For provider like google/github, instruct user to sign in again (simple approach).
+                                  // For provider like Google/GitHub, prompt the user to reauthenticate by signing in again.
                                   final again = await showDialog<bool>(
                                     context: localContext,
                                     builder: (dctx) => AlertDialog(
@@ -235,7 +237,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                   return;
                                 }
 
-                                // Call the server-side deletion function
+                                // If we reached this point and are ready, call the server-side deletion function
+                                if (!readyToDelete) return;
                                 setState(() => _loading = true);
                                 try {
                                   final functions = FirebaseFunctions.instance;
@@ -301,9 +304,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                             : const Text('Yes, Delete My Account'),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
