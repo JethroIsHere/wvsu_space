@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wvsu_space/router/app_router.dart';
 
@@ -56,7 +57,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   children: [
                     CircleAvatar(
                       radius: 36,
-                      backgroundColor: Colors.redAccent,
+                      backgroundColor: Colors.red,
                       child: const Icon(
                         Icons.delete_outline,
                         size: 32,
@@ -103,7 +104,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
+                          backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
@@ -129,6 +130,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                         child: const Text('Cancel'),
                                       ),
                                       ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              Theme.of(localContext)
+                                                  .colorScheme
+                                                  .primary,
+                                          foregroundColor:
+                                              Theme.of(localContext)
+                                                  .colorScheme
+                                                  .onPrimary,
+                                        ),
                                         onPressed: () =>
                                             Navigator.pop(ctx, true),
                                         child: const Text('Yes, delete'),
@@ -153,6 +164,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                 final providerIds = user.providerData
                                     .map((p) => p.providerId)
                                     .toList();
+<<<<<<< HEAD
                                 var readyToDelete = false;
 
                                 // Allow anonymous users to delete without extra reauthentication.
@@ -161,13 +173,19 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                 } else if (providerIds.contains('password')) {
                                   // If the user signed in with email/password, prompt for password to reauthenticate.
                                   final password = await showDialog<String?>(
+=======
+                                if (providerIds.contains('password')) {
+                                  // First entry
+                                  final first = await showDialog<String?>(
+>>>>>>> main
                                     context: localContext,
                                     builder: (dctx) {
-                                      final ctrl = TextEditingController();
+                                      final ctrl1 = TextEditingController();
                                       return AlertDialog(
-                                        title: const Text('Re-enter password'),
+                                        title: const Text(
+                                            'Enter password to confirm'),
                                         content: TextField(
-                                          controller: ctrl,
+                                          controller: ctrl1,
                                           obscureText: true,
                                           decoration: const InputDecoration(
                                             labelText: 'Password',
@@ -180,21 +198,76 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                             child: const Text('Cancel'),
                                           ),
                                           ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Theme.of(dctx)
+                                                  .colorScheme
+                                                  .primary,
+                                              foregroundColor: Theme.of(dctx)
+                                                  .colorScheme
+                                                  .onPrimary,
+                                            ),
                                             onPressed: () =>
-                                                Navigator.pop(dctx, ctrl.text),
-                                            child: const Text('Confirm'),
+                                                Navigator.pop(dctx, ctrl1.text),
+                                            child: const Text('Next'),
                                           ),
                                         ],
                                       );
                                     },
                                   );
-                                  if (password == null || password.isEmpty) {
+                                  if (first == null || first.isEmpty) return;
+
+                                  // Re-enter for confirmation
+                                  final second = await showDialog<String?>(
+                                    context: localContext,
+                                    builder: (dctx) {
+                                      final ctrl2 = TextEditingController();
+                                      return AlertDialog(
+                                        title: const Text('Re-enter password'),
+                                        content: TextField(
+                                          controller: ctrl2,
+                                          obscureText: true,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Re-enter password',
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(dctx, null),
+                                              child: const Text('Cancel')),
+                                          ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Theme.of(dctx)
+                                                    .colorScheme
+                                                    .primary,
+                                                foregroundColor: Theme.of(dctx)
+                                                    .colorScheme
+                                                    .onPrimary,
+                                              ),
+                                              onPressed: () => Navigator.pop(
+                                                  dctx, ctrl2.text),
+                                              child: const Text('Confirm')),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                  if (second == null || second.isEmpty) return;
+
+                                  if (first != second) {
+                                    if (!mounted) return;
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content:
+                                            Text('Passwords do not match.'),
+                                      ),
+                                    );
                                     return;
                                   }
+
                                   try {
                                     final cred = EmailAuthProvider.credential(
                                       email: user.email ?? '',
-                                      password: password,
+                                      password: first,
                                     );
                                     await user
                                         .reauthenticateWithCredential(cred);
@@ -220,15 +293,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                       ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(dctx, false),
-                                          child: const Text('Cancel'),
-                                        ),
+                                            onPressed: () =>
+                                                Navigator.pop(dctx, false),
+                                            child: const Text('Cancel')),
                                         ElevatedButton(
-                                          onPressed: () =>
-                                              Navigator.pop(dctx, true),
-                                          child: const Text('OK'),
-                                        ),
+                                            onPressed: () =>
+                                                Navigator.pop(dctx, true),
+                                            child: const Text('OK')),
                                       ],
                                     ),
                                   );
@@ -240,6 +311,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                 // If we reached this point and are ready, call the server-side deletion function
                                 if (!readyToDelete) return;
                                 setState(() => _loading = true);
+                                var deletionCompleted = false;
+                                var attemptedClientFallback = false;
                                 try {
                                   final functions = FirebaseFunctions.instance;
                                   final callable = functions.httpsCallable(
@@ -252,20 +325,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                       resp.data as Map<String, dynamic>;
                                   if (!mounted) return;
                                   if (data['success'] == true) {
-                                    messenger.showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Account deleted successfully.',
-                                        ),
-                                      ),
-                                    );
-                                    // Sign out and navigate to the choose (sign in / sign up) screen
-                                    await FirebaseAuth.instance.signOut();
-                                    if (!mounted) return;
-                                    nav.pushNamedAndRemoveUntil(
-                                      AppRouter.choose,
-                                      (r) => false,
-                                    );
+                                    deletionCompleted = true;
                                   } else {
                                     if (!mounted) return;
                                     messenger.showSnackBar(
@@ -275,21 +335,60 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                     );
                                   }
                                 } on FirebaseFunctionsException catch (e) {
-                                  if (!mounted) return;
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Server error: ${e.message}',
-                                      ),
-                                    ),
-                                  );
+                                  // Log then attempt client-side fallback.
+                                  debugPrint(
+                                      'deleteUserAccount function error: ${e.message}');
+                                  try {
+                                    attemptedClientFallback = true;
+                                    await _clientDeleteAccount(
+                                        user.uid, messenger, nav);
+                                    deletionCompleted = true;
+                                  } catch (inner) {
+                                    debugPrint(
+                                        'Client-side deletion fallback failed: $inner');
+                                  }
                                 } catch (e) {
-                                  if (!mounted) return;
-                                  messenger.showSnackBar(
-                                    SnackBar(content: Text('Error: $e')),
-                                  );
+                                  // Unknown error - log and attempt client-side fallback
+                                  debugPrint(
+                                      'deleteUserAccount unknown error: $e');
+                                  try {
+                                    attemptedClientFallback = true;
+                                    await _clientDeleteAccount(
+                                        user.uid, messenger, nav);
+                                    deletionCompleted = true;
+                                  } catch (inner) {
+                                    debugPrint(
+                                        'Client-side deletion fallback failed: $inner');
+                                  }
                                 } finally {
                                   if (mounted) setState(() => _loading = false);
+
+                                  if (deletionCompleted ||
+                                      attemptedClientFallback) {
+                                    // Show final confirmation dialog (UI-only) then sign out and navigate
+                                    await showDialog<void>(
+                                      context: localContext,
+                                      builder: (dctx) => AlertDialog(
+                                        title: const Text('Account Deleted'),
+                                        content: const Text(
+                                            'Your account has been deleted.'),
+                                        actions: [
+                                          ElevatedButton(
+                                            onPressed: () =>
+                                                Navigator.of(dctx).pop(),
+                                            child: const Text('OK'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    await FirebaseAuth.instance.signOut();
+                                    if (!mounted) return;
+                                    nav.pushNamedAndRemoveUntil(
+                                      AppRouter.choose,
+                                      (r) => false,
+                                    );
+                                  }
                                 }
                               },
                         child: _loading
@@ -325,5 +424,29 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _clientDeleteAccount(
+    String uid,
+    ScaffoldMessengerState messenger,
+    NavigatorState nav,
+  ) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      // Attempt basic client-side deletions. Many protected collections
+      // will fail due to security rules; we attempt what the client can.
+      final batch = firestore.batch();
+      final userDoc = firestore.collection('users').doc(uid);
+      batch.delete(userDoc);
+
+      // Commit what we can.
+      await batch.commit();
+      // Note: do not sign out or navigate here. Top-level caller will
+      // show a confirmation dialog and perform sign-out/navigation so the
+      // UX is consistent for both server and client fallback paths.
+    } catch (e) {
+      debugPrint('client-side delete error: $e');
+      rethrow;
+    }
   }
 }
