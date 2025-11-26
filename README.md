@@ -82,5 +82,5 @@ Open an issue if you need help or want to propose a substantial change.
 License
 -------
 
-MIT — see the `LICENSE` file if present.
+MIT.
 
