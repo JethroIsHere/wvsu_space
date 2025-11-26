@@ -363,6 +363,14 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                             'Your account has been deleted.'),
                                         actions: [
                                           ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Theme.of(dctx)
+                                                  .colorScheme
+                                                  .primary,
+                                              foregroundColor: Theme.of(dctx)
+                                                  .colorScheme
+                                                  .onPrimary,
+                                            ),
                                             onPressed: () =>
                                                 Navigator.of(dctx).pop(),
                                             child: const Text('OK'),
@@ -372,11 +380,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                     );
 
                                     await FirebaseAuth.instance.signOut();
-                                    if (!mounted) return;
-                                    nav.pushNamedAndRemoveUntil(
-                                      AppRouter.choose,
-                                      (r) => false,
-                                    );
+                                    if (mounted) {
+                                      nav.pushNamedAndRemoveUntil(
+                                        AppRouter.choose,
+                                        (r) => false,
+                                      );
+                                    }
                                   }
                                 }
                               },

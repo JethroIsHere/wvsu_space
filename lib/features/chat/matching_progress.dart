@@ -142,16 +142,12 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
           'matchUser call failed: ${fe.code} ${fe.message} details=${fe.details}',
         );
         // If Functions are unavailable (Spark plan), try client-side pairing
-        // so development can continue without billing.
+        // so development can continue without billing. Do not show an
+        // intrusive popup on failures; fall back silently and log instead.
         final didPairFallback = await _clientFindAndPair(uid);
         if (didPairFallback) return;
-        if (mounted) {
-          final msg = fe.message ?? fe.code;
-          final details = fe.details != null ? ' (${fe.details})' : '';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Match service error: $msg$details')),
-          );
-        }
+        debugPrint(
+            'matchUser: falling back to client pairing (no popup shown)');
       } catch (e) {
         debugPrint('matchUser call error: $e');
         final didPairFallback = await _clientFindAndPair(uid);
@@ -171,14 +167,11 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
         }
       });
     } catch (e) {
+      debugPrint('Failed to start matching: $e');
+      // Avoid showing a blocking popup for matchmaking failures. Check
+      // `mounted` before using the `BuildContext` because this method
+      // performs async work earlier in the flow.
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to start matching. ${e is FirebaseException && e.code == 'failed-precondition' ? 'Index is building, trying a simpler search…' : e.toString()}',
-          ),
-        ),
-      );
       Navigator.maybePop(context);
     }
   }
