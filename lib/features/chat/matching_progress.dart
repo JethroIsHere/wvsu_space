@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/chat/matching_progress.dart`
+// Matching progress UI and flow — pairs users into chat sessions.
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,13 +9,10 @@ import 'package:flutter/material.dart';
 
 import 'package:wvsu_space/router/app_router.dart';
 
-/// A sequenced loading flow shown while pairing users into a chat session.
-///
-/// It performs the lightweight client-side matchmaking used elsewhere in the
-/// app and visualizes three steps:
-/// 1) Finding available users
-/// 2) Matching interests
-/// 3) Creating secure connection
+/// Small helper screen that shows progress while we pair the current user
+/// into a chat session. This screen runs the matching flow (server-side
+/// function when available, or a simple client fallback) and shows three
+/// short steps: finding users, matching interests, and creating a connection.
 class MatchingProgressScreen extends StatefulWidget {
   final String mode; // 'random' or 'keyword'
   final List<String> keywords;
@@ -30,16 +29,16 @@ class MatchingProgressScreen extends StatefulWidget {
 
 class _MatchingProgressScreenState extends State<MatchingProgressScreen>
     with SingleTickerProviderStateMixin {
-  int _currentStep = 0; // 0..2 visible, 3 = completed
+  int _currentStep = 0; // UI step: 0..2 visible, 3 = finished
   int _elapsedSeconds = 0;
   Timer? _timer;
   Timer? _stepTicker;
 
-  // Matching state
+  // State used by the matchmaking flow (which updates a queue document).
   DocumentReference<Map<String, dynamic>>? _myQueueRef;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _queueSub;
 
-  // Simple pulse animation for the header icon
+  // Simple pulsing animation used by the header icon for a livelier UI
   late final AnimationController _pulse;
   late final Animation<double> _scale;
 
@@ -56,7 +55,8 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
     ).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
 
     _startTimers();
-    // Defer actual matchmaking start to ensure context is ready.
+    // Wait until the first frame is drawn, then start matchmaking so
+    // any required BuildContext work is safe.
     WidgetsBinding.instance.addPostFrameCallback((_) => _beginMatching());
   }
 
@@ -65,7 +65,8 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
       if (!mounted) return;
       setState(() => _elapsedSeconds++);
     });
-    // Ticks through steps for UX even while waiting (doesn't mark complete).
+    // Advance the visible step periodically to give the user feedback
+    // while waiting for an actual pairing result.
     _stepTicker = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
       if (_currentStep < 2) setState(() => _currentStep++);
@@ -78,11 +79,11 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
     _stepTicker?.cancel();
     _queueSub?.cancel();
     _pulse.dispose();
-    // Attempt to clean up the queue doc if still present
+    // Try to delete our queue document on dispose if it still exists.
     final ref = _myQueueRef;
     _myQueueRef = null;
     if (ref != null) {
-      // Fire and forget; ignore errors
+      // Fire-and-forget delete; ignore any errors during cleanup.
       // ignore: discarded_futures
       ref.delete().catchError((_) {});
     }
@@ -105,7 +106,7 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
       final queue = db.collection('matchQueue');
       final now = FieldValue.serverTimestamp();
 
-      // Step 0 -> create/enter queue
+      // Step 0: create or update our queue entry so the matcher can see us.
       _myQueueRef = queue.doc(uid);
       await _myQueueRef!.set({
         'uid': uid,
@@ -116,9 +117,10 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
       }, SetOptions(merge: true));
       if (mounted) setState(() => _currentStep = 1);
 
-      // Ask Cloud Functions to atomically match (server-side pairing)
+      // Try the server-side matcher first (atomic pairing via Cloud Functions).
       try {
-        // Call explicit region to avoid mismatch; our function is deployed in us-central1.
+        // Call functions in the same region as our deployment to avoid
+        // region-related mismatches (this project uses us-central1).
         final callable = FirebaseFunctions.instanceFor(
           region: 'us-central1',
         ).httpsCallable('matchUser');
@@ -154,7 +156,8 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
         if (didPairFallback) return;
       }
 
-      // If not immediately paired, listen for pairing on my own doc
+      // If no immediate pairing happened, listen for updates on our queue
+      // document — the server or another client may update it with a session.
       _queueSub?.cancel();
       _queueSub = _myQueueRef!.snapshots().listen((doc) async {
         final data = doc.data();
@@ -168,18 +171,17 @@ class _MatchingProgressScreenState extends State<MatchingProgressScreen>
       });
     } catch (e) {
       debugPrint('Failed to start matching: $e');
-      // Avoid showing a blocking popup for matchmaking failures. Check
-      // `mounted` before using the `BuildContext` because this method
-      // performs async work earlier in the flow.
+      // If something goes wrong early, just back out of the flow so the
+      // user can try again; avoid a blocking popup here.
       if (!mounted) return;
       Navigator.maybePop(context);
     }
   }
 
-  /// Attempt client-side pairing by querying the queue and updating both users
-  /// in a single batch. This is a development fallback for projects without
-  /// Cloud Functions billing. Requires permissive Firestore rules to allow
-  /// peer updates with strict constraints.
+  /// A lightweight client-side pairing routine used as a fall-back when the
+  /// server matcher isn't available. It searches the queue and atomically
+  /// creates a session and marks both users as paired. This is useful for
+  /// local testing but relies on permissive rules.
   Future<bool> _clientFindAndPair(String uid) async {
     try {
       final db = FirebaseFirestore.instance;

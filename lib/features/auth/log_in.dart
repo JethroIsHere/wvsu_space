@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/auth/log_in.dart`
+// Sign-in screen (email/password) with optional 'remember me'.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:shared_preferences/shared_preferences.dart';

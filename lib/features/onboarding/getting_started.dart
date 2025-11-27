@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/onboarding/getting_started.dart`
+// Onboarding flow: slides and quick intro to app features.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/main.dart';
 // --- Added Imports ---

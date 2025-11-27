@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/chat.dart`
+// Room chat screen implementation for Vibe Rooms (message stream, composer).
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/features/vibe_rooms/repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';

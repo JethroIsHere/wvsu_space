@@ -52,8 +52,8 @@ Practical notes
 ---------------
 
 - The codebase uses a feature-first layout (`lib/features/...`). If your editor shows missing imports after pulling, run `flutter pub get` and restart the Dart analysis server (in VS Code: `Dart: Restart Analysis Server`).
-- Helper scripts may produce `.bak` files during batch edits; these can be removed.
-- The app currently checks WVSU email domains on the client — enforce this on the server or in Firestore rules for production.
+- Helper scripts may produce `.bak` files during batch edits; these can be removed or it's completely up to you.
+- The app currently checks WVSU email domains on the client and does not allow other emails without the 'wvsu.edu.ph'
 
 How to help (Really appreciate it if you do tysm!!!)
 -----------
@@ -72,7 +72,7 @@ flutter clean
 flutter pub get
 ```
 
-- Matching stuck on "Searching": cancel and try again; test with two emulators to simulate two users.
+- Matching stuck on "Searching": cancel and try again; test with two emulators to simulate two users. Sometimes it takes a while while some other times, it's fast.
 
 Contact
 -------

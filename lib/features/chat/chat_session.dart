@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/chat/chat_session.dart`
+// Active chat session UI: message stream, composer, and session lifecycle.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -174,6 +176,10 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
             content: const Text('Your chat partner left the conversation.'),
             actions: [
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
                 onPressed: () => Navigator.pop(context),
                 child: const Text('OK'),
               ),
@@ -259,6 +265,10 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
                 onPressed: () => Navigator.pop(context, true),
                 child: const Text('End'),
               ),
@@ -351,6 +361,10 @@ class _ChatSessionScreenState extends State<ChatSessionScreen> {
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
                 onPressed: () => Navigator.pop(context, true),
                 child: const Text('Submit'),
               ),

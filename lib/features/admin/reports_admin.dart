@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/admin/reports_admin.dart`
+// Admin view for submitted user reports and moderation tools.
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:cloud_firestore/cloud_firestore.dart';

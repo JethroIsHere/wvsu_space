@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/utils.dart`
+// Small models and helpers for Vibe Rooms: moods and crisis keyword lists.
 class VibeMood {
   final String id;
   final String emoji;

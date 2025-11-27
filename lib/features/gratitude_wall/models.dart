@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/gratitude_wall/models.dart`
+// Data models for the gratitude wall feature.
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GratitudePost {

@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
+// WVSU Space — `lib/features/admin/admin_login.dart`
+// Small admin login view used by staff to access admin sections.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/router/app_router.dart';
 import 'package:wvsu_space/utils/app_colors.dart';

@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/moderation/community_guidelines.dart`
+// Static screen showing community rules and best practices.
 import 'package:flutter/material.dart';
 
 class CommunityGuidelinesScreen extends StatelessWidget {
@@ -100,7 +102,6 @@ class CommunityGuidelinesScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-
             _sectionCard(
               leading: CircleAvatar(
                 backgroundColor: Colors.blue.shade50,
@@ -114,9 +115,7 @@ class CommunityGuidelinesScreen extends StatelessWidget {
                 'Avoid personal attacks or harassment',
               ],
             ),
-
             const SizedBox(height: 12),
-
             _sectionCard(
               leading: CircleAvatar(
                 backgroundColor: Colors.blue.shade50,
@@ -130,9 +129,7 @@ class CommunityGuidelinesScreen extends StatelessWidget {
                 "Don't share harmful or explicit content",
               ],
             ),
-
             const SizedBox(height: 12),
-
             _sectionCard(
               leading: CircleAvatar(
                 backgroundColor: Colors.blue.shade50,
@@ -146,9 +143,7 @@ class CommunityGuidelinesScreen extends StatelessWidget {
                 'Encourage positive interactions',
               ],
             ),
-
             const SizedBox(height: 12),
-
             _sectionCard(
               leading: CircleAvatar(
                 backgroundColor: Colors.red.shade50,
@@ -162,7 +157,6 @@ class CommunityGuidelinesScreen extends StatelessWidget {
                 'Spam or promotional content',
               ],
             ),
-
             const SizedBox(height: 20),
           ],
         ),

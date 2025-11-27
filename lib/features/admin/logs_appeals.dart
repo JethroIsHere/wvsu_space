@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/admin/logs_appeals.dart`
+// Admin tool: view logs and manage appeals submitted by users.
 // ignore_for_file: use_build_context_synchronously
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

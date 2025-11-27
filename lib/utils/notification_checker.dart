@@ -1,3 +1,5 @@
+// WVSU Space — `lib/utils/notification_checker.dart`
+// Helpers to surface important in-app warnings to the current user.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

@@ -1,3 +1,5 @@
+// WVSU Space — `lib/widgets/bottom_nav.dart`
+// Bottom navigation bar used across main screens.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/router/app_router.dart';
 

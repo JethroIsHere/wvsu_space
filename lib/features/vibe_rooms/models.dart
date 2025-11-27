@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/models.dart`
+// Small data models used by Vibe Rooms screens and repository code.
 // Simple, file-local data models used by the Vibe Rooms UI scaffolding.
 
 class VibeParticipant {

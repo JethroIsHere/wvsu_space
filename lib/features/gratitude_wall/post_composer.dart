@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/gratitude_wall/post_composer.dart`
+// Small composer UI used to create gratitude or express posts.
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

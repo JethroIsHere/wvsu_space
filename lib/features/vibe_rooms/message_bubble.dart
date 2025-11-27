@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/message_bubble.dart`
+// Small UI widget that renders a chat message bubble inside Vibe Rooms.
 import 'package:flutter/material.dart';
 
 class MessageBubble extends StatelessWidget {

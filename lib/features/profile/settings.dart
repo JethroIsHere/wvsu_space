@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/profile/settings.dart`
+// Simple: account and app settings (local prefs + shortcuts to account actions).
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

@@ -1,3 +1,5 @@
+// WVSU Space — `lib/widgets/rate_conversation_dialog.dart`
+// Dialog allowing users to rate a completed random chat session.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

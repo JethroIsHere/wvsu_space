@@ -1,4 +1,6 @@
-/* This is the central place that defines all app routes and how screens transition when opened. */
+// WVSU Space — `lib/router/app_router.dart`
+// Central routing map: defines route names and how screens transition.
+// Keeps route strings in one place for easy navigation and maintenance.
 import 'package:flutter/material.dart';
 
 import 'package:wvsu_space/features/onboarding/getting_started.dart';

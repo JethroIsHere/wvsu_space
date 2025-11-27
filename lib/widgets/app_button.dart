@@ -1,3 +1,5 @@
+// WVSU Space — `lib/widgets/app_button.dart`
+// Small standardized button used across the app to keep a consistent style.
 import 'package:flutter/material.dart';
 
 // Small wrapper around `ElevatedButton` that applies the app's primary style which is

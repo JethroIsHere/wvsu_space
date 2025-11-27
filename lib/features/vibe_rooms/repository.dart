@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/repository.dart`
+// Keeps an in-memory representation of Vibe Rooms, syncing to Firestore.
 // Manage Vibe Rooms: keep rooms/messages in memory, sync with Firestore, track presence or user activity.
 import 'dart:async';
 import 'dart:math';

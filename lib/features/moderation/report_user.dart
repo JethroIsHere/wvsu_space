@@ -1,3 +1,6 @@
+// WVSU Space — `lib/features/moderation/report_user.dart`
+// Simple: form that allows users to report other users; includes autocomplete
+// by nickname and submits a structured report document for admin review.
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
@@ -76,7 +79,10 @@ class _ReportUserScreenState extends State<ReportUserScreen> {
 
   Future<void> _submitReport() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _submitting = true);
+    // Validate the form and set the submitting state.
+    setState(() {
+      _submitting = true;
+    });
     try {
       final reporterUid = FirebaseAuth.instance.currentUser?.uid ?? 'anonymous';
       final reporterNick = FirebaseAuth.instance.currentUser?.displayName ?? '';
@@ -144,7 +150,11 @@ class _ReportUserScreenState extends State<ReportUserScreen> {
           ),
         );
       }
-      if (mounted) Navigator.of(context).pop();
+      // Close this screen when complete. Guard `mounted` to avoid
+      // calling Navigator after the widget has been disposed.
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       debugPrint('Failed to submit report: $e');
       if (!mounted) return;

@@ -1,3 +1,5 @@
+// WVSU Space — `lib/main.dart`
+// App entry: initialize Firebase, set up theme, and boot the router.
 // Upon user's entry in the app, initialize Firebase, set theme, and track user activity.
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';

@@ -1,10 +1,13 @@
+// WVSU Space — `lib/features/home/home.dart`
+// Home screen: greeting, quick access to matching and quick chat, and
+// a summary of activity. Handles last-active tracking and notification checks.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:wvsu_space/router/app_router.dart';
-// bottom nav is provided by MainShell
+// Bottom navigation is provided by MainShell. This screen also triggers
+// a brief notification check after startup so users see important warnings.
 import 'package:wvsu_space/utils/notification_checker.dart';
-// Reverted: removed Rooms screen import
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

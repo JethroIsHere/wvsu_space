@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/onboarding/choose.dart`
+// Simple: initial choose screen that routes users to Login or Sign Up.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/router/app_router.dart';
 import 'package:wvsu_space/utils/app_colors.dart';

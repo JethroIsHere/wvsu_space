@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/room_list.dart`
+// Shows available Vibe Rooms and lets the user join or create rooms.
 import 'package:flutter/material.dart';
 // foundation not required; material.dart covers needed APIs
 import 'package:firebase_auth/firebase_auth.dart';

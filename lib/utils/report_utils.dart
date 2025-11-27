@@ -1,3 +1,5 @@
+// WVSU Space — `lib/utils/report_utils.dart`
+// Small helpers to normalize report documents (ensure nicknames exist).
 // Utilities: fill missing reporter and reported nicknames when available.
 // Ensure the `reporterNickname` field exists when a value is provided.
 Map<String, dynamic> ensureReporterNickname(

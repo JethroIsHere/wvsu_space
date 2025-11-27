@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/room_card.dart`
+// Visual card showing room metadata and quick join actions.
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:wvsu_space/features/vibe_rooms/models.dart';

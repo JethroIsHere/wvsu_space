@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/add_room_dialog.dart`
+// Dialog to create a new Vibe Room with title, description and mood.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/features/vibe_rooms/repository.dart';
 import 'package:wvsu_space/features/vibe_rooms/utils.dart';

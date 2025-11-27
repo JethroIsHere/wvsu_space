@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/standing/community_standing.dart`
+// Community standing view: shows user's standing score and recent activity.
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';

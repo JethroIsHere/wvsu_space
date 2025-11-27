@@ -1,3 +1,5 @@
+// WVSU Space — `lib/utils/backfill_helper.dart`
+// Utility to backfill missing reporter/reported nicknames across report collections.
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Backfill helper's goal is to populate reporter/reported nicknames when available.

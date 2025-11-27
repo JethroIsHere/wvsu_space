@@ -1,3 +1,7 @@
+// WVSU Space — `lib/features/auth/change_password.dart`
+// Simple: allows a user who signed in with email/password to change their
+// password after reauthentication. For provider accounts (Google/Apple)
+// it explains how to proceed since in-place reauth isn't possible.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/utils/app_colors.dart';
@@ -161,8 +165,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final currentValid = _currentCtrl.text.trim().isNotEmpty;
     final newMsg = _passwordValidationMessage(_newCtrl.text);
     final newValid = newMsg == null;
-    final confirmValid =
-        _confirmCtrl.text.trim().isNotEmpty &&
+    final confirmValid = _confirmCtrl.text.trim().isNotEmpty &&
         _confirmCtrl.text == _newCtrl.text;
     return currentValid && newValid && confirmValid;
   }
@@ -223,9 +226,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 Form(
                   key: _formKey,
                   child: Column(
@@ -244,7 +245,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         () => setState(() => _showCurrent = !_showCurrent),
                       ),
                       const SizedBox(height: 16),
-
                       Text('New Password', style: theme.textTheme.bodyLarge),
                       const SizedBox(height: 8),
                       _buildPasswordField(
@@ -254,7 +254,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         () => setState(() => _showNew = !_showNew),
                       ),
                       const SizedBox(height: 16),
-
                       Text(
                         'Confirm New Password',
                         style: theme.textTheme.bodyLarge,
@@ -275,9 +274,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           return null;
                         },
                       ),
-
                       const SizedBox(height: 20),
-
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
@@ -332,8 +329,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return TextFormField(
       controller: ctrl,
       obscureText: !visible,
-      validator:
-          validator ??
+      validator: validator ??
           (v) => (v == null || v.isEmpty) ? 'Please enter a value' : null,
       decoration: InputDecoration(
         hintText: hint,

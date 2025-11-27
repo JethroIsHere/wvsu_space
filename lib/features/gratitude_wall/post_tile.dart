@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/gratitude_wall/post_tile.dart`
+// Widget that renders a single gratitude wall post with like actions.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

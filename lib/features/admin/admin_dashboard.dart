@@ -1,6 +1,8 @@
 // ignore_for_file: use_build_context_synchronously
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// WVSU Space — `lib/features/admin/admin_dashboard.dart`
+// Admin dashboard summarizing recent reports, appeals, and system status.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/router/app_router.dart';
 

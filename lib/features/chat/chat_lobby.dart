@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/chat/chat_lobby.dart`
+// Lobby screen for starting chats (random or keyword-based matching).
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/router/app_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';

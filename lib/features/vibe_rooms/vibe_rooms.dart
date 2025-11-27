@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/vibe_rooms.dart`
+// Public exports for the Vibe Rooms feature (convenience barrel file).
 // Public exports for the Vibe Rooms feature.
 export 'models.dart';
 export 'selector.dart';

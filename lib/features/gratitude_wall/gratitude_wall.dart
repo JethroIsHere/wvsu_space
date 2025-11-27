@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/gratitude_wall/gratitude_wall.dart`
+// Gratitude Wall main screen: shows recent posts, manages cleanup and refresh.
 import 'dart:async';
 
 import 'package:flutter/material.dart';

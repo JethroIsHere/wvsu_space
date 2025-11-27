@@ -1,3 +1,9 @@
+// WVSU Space — `lib/features/auth/delete_account.dart`
+// Screen that lets the user permanently delete their account and related
+// data. This UI guides the user through confirmation, reauthentication
+// (if needed), and then calls the server-side deletion routine. On
+// failures we attempt a best-effort client-side cleanup so the demo
+// experience remains usable without requiring production billing.
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
@@ -160,12 +166,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                   return;
                                 }
 
-                                // If the user signed in with email/password, prompt for password to reauthenticate.
+                                // If the user signed in with email/password, prompt for their
+                                // password so we can reauthenticate securely before deleting.
                                 final providerIds = user.providerData
                                     .map((p) => p.providerId)
                                     .toList();
                                 if (providerIds.contains('password')) {
-                                  // First entry
+                                  // First: ask for the password once
                                   final first = await showDialog<String?>(
                                     context: localContext,
                                     builder: (dctx) {
@@ -205,7 +212,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                   );
                                   if (first == null || first.isEmpty) return;
 
-                                  // Re-enter for confirmation
+                                  // Second: ask to re-enter the password to confirm
                                   final second = await showDialog<String?>(
                                     context: localContext,
                                     builder: (dctx) {
@@ -273,7 +280,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                     return;
                                   }
                                 } else {
-                                  // For provider like google/github, instruct user to sign in again (simple approach).
+                                  // For OAuth providers (Google, GitHub) we can't reauthenticate
+                                  // inline — ask the user to sign out and sign in again with
+                                  // their provider, then retry deletion.
                                   final again = await showDialog<bool>(
                                     context: localContext,
                                     builder: (dctx) => AlertDialog(
@@ -298,7 +307,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                   return;
                                 }
 
-                                // Call the server-side deletion function
+                                // Call the server-side deletion function (admin operation).
                                 setState(() => _loading = true);
                                 var deletionCompleted = false;
                                 var attemptedClientFallback = false;
@@ -324,7 +333,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                     );
                                   }
                                 } on FirebaseFunctionsException catch (e) {
-                                  // Log then attempt client-side fallback.
+                                  // Log the functions error and try a client-side fallback
+                                  // so the delete flow can still complete during local testing.
                                   debugPrint(
                                       'deleteUserAccount function error: ${e.message}');
                                   try {
@@ -337,7 +347,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                         'Client-side deletion fallback failed: $inner');
                                   }
                                 } catch (e) {
-                                  // Unknown error - log and attempt client-side fallback
+                                  // Unknown error — log it and try the client-side fallback.
                                   debugPrint(
                                       'deleteUserAccount unknown error: $e');
                                   try {
@@ -354,7 +364,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
 
                                   if (deletionCompleted ||
                                       attemptedClientFallback) {
-                                    // Show final confirmation dialog (UI-only) then sign out and navigate
+                                    // Show the final confirmation dialog, then sign out and
+                                    // navigate back to the chooser screen. (Navigation is
+                                    // only performed if the widget is still mounted.)
                                     await showDialog<void>(
                                       context: localContext,
                                       builder: (dctx) => AlertDialog(
@@ -431,17 +443,18 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   ) async {
     try {
       final firestore = FirebaseFirestore.instance;
-      // Attempt basic client-side deletions. Many protected collections
-      // will fail due to security rules; we attempt what the client can.
+      // Try a minimal, best-effort client-side cleanup. Many collections
+      // are protected by security rules and will fail from the client; this
+      // is only a fallback for local/emulator testing.
       final batch = firestore.batch();
       final userDoc = firestore.collection('users').doc(uid);
       batch.delete(userDoc);
 
-      // Commit what we can.
+      // Commit any allowed deletes.
       await batch.commit();
-      // Note: do not sign out or navigate here. Top-level caller will
-      // show a confirmation dialog and perform sign-out/navigation so the
-      // UX is consistent for both server and client fallback paths.
+      // Note: don't sign out or navigate here — the caller shows the
+      // confirmation dialog and performs navigation so the UX stays
+      // consistent between server and client fallback paths.
     } catch (e) {
       debugPrint('client-side delete error: $e');
       rethrow;

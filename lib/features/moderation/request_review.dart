@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/moderation/request_review.dart`
+// Screen where users can request a review or appeal for moderation actions.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

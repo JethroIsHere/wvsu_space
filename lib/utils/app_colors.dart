@@ -1,3 +1,5 @@
+// WVSU Space — `lib/utils/app_colors.dart`
+// Centralized brand colors used throughout the UI.
 import 'package:flutter/material.dart';
 
 // These are the colors you mostly see in the app.

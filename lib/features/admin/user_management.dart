@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/admin/user_management.dart`
+// Admin UI to search for users, view basic details, and perform moderation actions.
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:async';

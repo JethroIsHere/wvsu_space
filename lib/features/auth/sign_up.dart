@@ -1,6 +1,9 @@
+// WVSU Space — `lib/features/auth/sign_up.dart`
+// Simple: sign-up screen that creates a Firebase Auth user and a Firestore
+// user document (nickname, standing). Only uses WVSU email addresses.
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore
 import 'package:wvsu_space/main.dart';
 import 'package:wvsu_space/router/app_router.dart';
 import 'package:wvsu_space/widgets/app_button.dart';
@@ -13,7 +16,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  // --- Add Controllers ---
+  // Text controllers for the signup form fields
   final _nicknameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,15 +28,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
-    // --- Dispose controllers ---
+    // Dispose form controllers to avoid memory leaks
     _nicknameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    // -------------------------
     super.dispose();
   }
 
-  // --- Sign Up Function ---
+  // Sign-up flow: create Auth user, write Firestore profile, send verification
   Future<void> _signUp() async {
     // Clear previous errors and show loading UI
     setState(() {
@@ -41,10 +43,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _errorMessage = null;
     });
 
-    // Enforce WVSU-only email addresses (must be exactly user@wvsu.edu.ph)
+    // Use only WVSU-only email addresses (user@wvsu.edu.ph required)
     final rawEmail = _emailController.text.trim();
     final email = rawEmail.toLowerCase();
     // Allow WVSU emails or the developer test email `jet3danocup@gmail.com`.
+    // This happens so that I as one of the developers can test the app while making it.
     final allowedEmailRegExp =
         RegExp(r'(^[^@\s]+@wvsu\.edu\.ph$)|(^jet3danocup@gmail\.com$)');
     if (!allowedEmailRegExp.hasMatch(email)) {

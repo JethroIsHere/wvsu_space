@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/selector.dart`
+// UI to select a mood and join/create a corresponding Vibe Room.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/features/vibe_rooms/repository.dart';
 import 'package:wvsu_space/features/vibe_rooms/chat.dart';

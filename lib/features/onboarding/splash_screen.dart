@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/onboarding/splash_screen.dart`
+// App splash animation & navigation into onboarding.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/router/app_router.dart';
 import 'package:wvsu_space/features/onboarding/getting_started.dart';

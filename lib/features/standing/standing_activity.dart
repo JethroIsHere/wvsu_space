@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// WVSU Space — `lib/features/standing/standing_activity.dart`
+// UI for the community standing activity — shows seasonal leaderboards and progress.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/utils/app_colors.dart';
 

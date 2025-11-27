@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
+// WVSU Space — `lib/features/admin/admin_settings.dart`
+// Admin configuration screen for feature flags and testing helpers.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/router/app_router.dart';
 

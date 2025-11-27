@@ -1,3 +1,5 @@
+// WVSU Space — `lib/features/vibe_rooms/styles.dart`
+// Visual constants used by Vibe Rooms screens.
 import 'package:flutter/material.dart';
 
 class AppColors {

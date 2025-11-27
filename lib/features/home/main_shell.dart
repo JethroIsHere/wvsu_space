@@ -1,4 +1,5 @@
-/* This is to show the main app shell with bottom navigation and the main screens (Home, Rooms, Gratitude, Standing). */
+// WVSU Space — `lib/features/home/main_shell.dart`
+// Simple: the app shell that holds the main tabs and floating actions.
 import 'package:flutter/material.dart';
 import 'package:wvsu_space/features/home/home.dart';
 import 'package:wvsu_space/features/standing/community_standing.dart';
