@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore
 import 'package:wvsu_space/main.dart';
 import 'package:wvsu_space/router/app_router.dart';
 import 'package:wvsu_space/widgets/app_button.dart';
+import 'package:wvsu_space/features/auth/terms_and_conditions.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -20,6 +21,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _nicknameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _acceptedTerms = false; // User must accept Terms & Conditions
+  bool _hasViewedTerms = false; // Track whether the user opened/read the terms
   // ----------------------
 
   bool _obscurePassword = true;
@@ -62,6 +65,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     try {
+      // Ensure the user accepted Terms & Conditions before proceeding
+      if (!_acceptedTerms) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Please accept the Terms & Conditions to continue.';
+          });
+        }
+        return;
+      }
       // 1. Create user in Firebase Auth
       final credential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -132,6 +145,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // Open Terms screen; returns true when user accepts.
+  Future<void> _openTerms() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const TermsAndConditionsScreen()),
+    );
+    if (mounted) {
+      setState(() {
+        // Mark that the user viewed the terms. Accept only if they tapped Accept.
+        _hasViewedTerms = true;
+        _acceptedTerms = result == true;
+      });
     }
   }
   // ------------------------
@@ -313,6 +340,50 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               // ---------------------------
               const SizedBox(height: 16),
+
+              // --- Terms acceptance ---
+              Row(
+                children: [
+                  Checkbox(
+                    value: _acceptedTerms,
+                    onChanged: _hasViewedTerms
+                        ? (v) {
+                            setState(() => _acceptedTerms = v ?? false);
+                          }
+                        : null,
+                  ),
+                  Expanded(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text('I agree to the ', style: textTheme.bodyMedium),
+                        GestureDetector(
+                          onTap: _openTerms,
+                          child: Text(
+                            'Terms & Conditions',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (!_hasViewedTerms)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    'Please read the Terms & Conditions before checking the box.',
+                    style: textTheme.bodySmall?.copyWith(
+                      color:
+                          colorScheme.onSurface.withAlpha((0.65 * 255).round()),
+                    ),
+                  ),
+                ),
 
               // --- Sign Up Button ---
               AppButton(
