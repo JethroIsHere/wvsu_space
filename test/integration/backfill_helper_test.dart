@@ -37,9 +37,8 @@ void main() {
     }
 
     // Ensure reporterNickname values include both the existing value and the filled value
-    final reporterNicks = docs
-        .map((d) => d.data()['reporterNickname'] as String?)
-        .toList();
+    final reporterNicks =
+        docs.map((d) => d.data()['reporterNickname'] as String?).toList();
     expect(reporterNicks.contains('Existing'), isTrue);
     expect(reporterNicks.contains('Alice'), isTrue);
   });

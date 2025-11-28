@@ -1,86 +1,122 @@
+# WVSU Space — A Safe Place for WVSU Students
 
-# WVSU Space
+WVSU Space is a friendly mobile app for students of West Visayas State University (WVSU). It helps them find another peer from the same university to have short, anonymous conversations — for studying, checking in, or sharing a quick word of encouragement.
 
-WVSU Space is a mobile app that helps students at Western Visayas State University (WVSU) meet online for short, meaningful, anonymous conversations. It is designed to be respectful, low-friction, and private.
+This project is built to be a welcoming, low-pressure space where students can connect with peers who likely understand the same campus life and academic context.
 
-Purpose
--------
+---
 
-Help students find a peer to talk to—about study topics, hobbies, open up thoughts, vent out or just to check in—without sharing personal details.
+## For students (quick, plain language)
 
-What you can do
----------------
+- Sign up with your WVSU email address when prompted.
+- You'll be shown the Terms & Conditions and asked to read and accept them before creating an account.
+- If you change your mind, you can delete your account from the app settings at any time.
 
-- Sign up or sign in using a WVSU email (currently accepts `@wvsu.edu.ph`).
-- Start a Quick Chat or choose an interest to match with someone who selected the same topic.
-- Join Vibe Rooms for topic-based group discussions or post short messages on the Gratitude Wall.
+If you're not technical and just want to try the app, that's all you need to know — create an account with your WVSU email and follow the app prompts. Be respectful and kind in conversations.
 
-Quick start (developer)
------------------------
+---
 
-Prerequisites: Flutter (stable channel) and a Firebase project for local testing.
+## What you can do in WVSU Space
 
-1. Fetch packages:
+- Quick Chat: brief anonymous 1:1 chats with another WVSU student either pure random or search via interests.
+- Vibe Rooms: join group chats by topic or interest or host one.
+- Gratitude Wall: post short notes to share appreciation or kindness.
+- Account management: sign up, verify your email, and delete your account if you wish.
+
+---
+
+## Quick Start (for developers / evaluators)
+
+These commands help you run and build the app locally. They are optional if you only want to try the published app.
+
+### Prerequisites
+
+- Flutter SDK (stable channel)
+- Android SDK (or Xcode for iOS) and at least one device or emulator
+- Git (for cloning the repository)
+
+### Install dependencies
 
 ```powershell
 flutter pub get
 ```
 
-2. Add Firebase platform files locally (do not commit these):
-
-- Android: `android/app/google-services.json`
-- iOS: `ios/Runner/GoogleService-Info.plist`
-- Optional: run FlutterFire CLI to generate `lib/firebase_options.dart`
-
-3. Run the app:
+### Run the app (development)
 
 ```powershell
-flutter run
+flutter run -d <device-id>
 ```
 
-Tests and checks
-----------------
+### Build a release APK (Android)
 
-Run tests and static analysis:
+```powershell
+flutter build apk --release
+```
 
+### Install the release APK (example)
+
+```powershell
+flutter install --release -d <device-id>
+```
+
+---
+
+## Firebase & Safe Testing
+
+- The app uses Firebase for auth and backend features. Do NOT commit platform credential files.
+  Keep these local:
+  - `android/app/google-services.json` (Android)
+  - `ios/Runner/GoogleService-Info.plist` (iOS)
+- For testing destructive flows (like account deletion) use the Firebase Emulator Suite so you don't affect production data.
+
+If you use FlutterFire CLI, you can run `flutterfire configure` locally to generate `lib/firebase_options.dart`.
+
+---
+
+## Testing & code checks
+
+- Run tests:
 ```powershell
 flutter test --reporter=expanded
-dart analyze
+```
+- Static analysis:
+```powershell
+flutter analyze
+```
+- Reformat code (recommended before committing):
+```powershell
+dart format .
 ```
 
-Practical notes
----------------
+---
 
-- The codebase uses a feature-first layout (`lib/features/...`). If your editor shows missing imports after pulling, run `flutter pub get` and restart the Dart analysis server (in VS Code: `Dart: Restart Analysis Server`).
-- Helper scripts may produce `.bak` files during batch edits; these can be removed or it's completely up to you.
-- The app currently checks WVSU email domains on the client and does not allow other emails without the 'wvsu.edu.ph'
+## Terms & Account Deletion (for users)
 
-How to help (Really appreciate it if you do tysm!!!)
------------
+- Terms & Conditions are shown at sign-up; users must view and accept them before creating an account.
+- Account deletion is available from the app settings. For safety, deletion may require you to re-authenticate.
 
-- Pick a small issue or UI tweak and open a pull request.
-- Run `dart analyze` and `flutter test` before creating a PR.
-- Use a clear branch name and explain your change in the PR description.
+---
 
-Troubleshooting
----------------
+## Contributing
 
-- App fails to start after changes:
+Small, focused contributions are welcome — UI polish, documentation, or bug fixes. (This is highly appreciated by us the developers)
 
+- Before opening a PR, run `flutter analyze` and `flutter test` locally.
+- Use a clear branch name and provide a short PR description explaining the change.
+
+---
+
+## Troubleshooting (common fixes)
+
+- If the app fails after recent changes:
 ```powershell
 flutter clean
 flutter pub get
 ```
+- On Windows, enabling Developer Mode may be required for some builds (symlink support).
 
-- Matching stuck on "Searching": cancel and try again; test with two emulators to simulate two users. Sometimes it takes a while while some other times, it's fast.
+---
 
-Contact
--------
+## License
 
-Open an issue if you need help or want to propose a substantial change.
-
-License
--------
-
-MIT.
-
+This project is licensed under the MIT License. See the `LICENSE` file for details.
