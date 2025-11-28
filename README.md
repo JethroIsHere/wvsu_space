@@ -120,3 +120,13 @@ flutter pub get
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+---
+
+## Download the release APK
+
+A signed release APK built for Android is included in this repository for convenience:
+
+- `releases/wvsu_space-release.apk`
+
+You can copy that file to your Android device and install it (e.g., via `adb install -r`).
